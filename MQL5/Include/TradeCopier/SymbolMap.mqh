@@ -28,6 +28,36 @@ private:
       return SymbolSelect(name, true);       // must be in Market Watch to trade
      }
 
+   // Last resort when no suffix is configured: look for exactly one broker
+   // symbol that is `base` plus a short suffix (EURUSD -> EURUSDm, EURUSD.r).
+   // More than one match (e.g. EURUSDm and EURUSDc) is ambiguous - give up and
+   // let the user set SymbolSuffix or SymbolMap.
+   string            AutoSuffix(const string base)
+     {
+      string found = "";
+      int    len = StringLen(base);
+      int    total = SymbolsTotal(false);
+      for(int i = 0; i < total; i++)
+        {
+         string name = SymbolName(i, false);
+         int extra = StringLen(name) - len;
+         if(extra < 1 || extra > 4 || StringSubstr(name, 0, len) != base)
+            continue;
+         if(found != "")
+           {
+            PrintFormat("TradeCopier: '%s' matches both '%s' and '%s' - set SymbolSuffix or SymbolMap", base, found, name);
+            return "";
+           }
+         found = name;
+        }
+      if(found != "" && Usable(found))
+        {
+         PrintFormat("TradeCopier: no suffix set - auto-detected '%s' for '%s'", found, base);
+         return found;
+        }
+      return "";
+     }
+
 public:
    void              Init(const string spec, const string prefix, const string suffix, const string strip)
      {
@@ -86,6 +116,8 @@ public:
             result = base;
          else if(Usable(masterSymbol))
             result = masterSymbol;
+         else
+            result = AutoSuffix(base);
         }
 
       int n = ArraySize(m_cacheKey);
