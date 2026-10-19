@@ -1,0 +1,16 @@
+# Compiled MetaTrader binaries
+*.ex4
+*.ex5
+
+# Runtime files
+*.log
+Logs/
+
+# Local settings that may contain account details
+*.set
+*.ini
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/
