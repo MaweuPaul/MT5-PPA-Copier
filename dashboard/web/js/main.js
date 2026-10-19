@@ -17,7 +17,7 @@ let overview = null;
 
 function setConnection(ok) {
   $("#conn").className = `pill ${ok ? "pill-good" : "pill-bad"}`;
-  $("#conn").textContent = ok ? "live" : "dashboard offline";
+  $("#conn").textContent = ok ? "Live" : "Dashboard offline";
 }
 
 async function refreshOverview() {

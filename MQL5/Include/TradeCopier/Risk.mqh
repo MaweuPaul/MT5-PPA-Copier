@@ -11,6 +11,7 @@ class CTcRisk
   {
 private:
    datetime          m_breachDay;   // server day a daily-loss stop happened
+   double            m_breachLimit; // the limit in force when it happened
 
    static datetime   ServerDayStart()
      {
@@ -26,7 +27,7 @@ public:
    string            reason;
 
                      CTcRisk() { Reset(); }
-   void              Reset() { m_breachDay = 0; dailyPnl = 0; breached = false; reason = ""; }
+   void              Reset() { m_breachDay = 0; m_breachLimit = 0; dailyPnl = 0; breached = false; reason = ""; }
 
    // Today's P&L = deals closed since the broker's midnight + current floating.
    // Stateless, so a restart can't "forget" today's losses.
@@ -46,11 +47,15 @@ public:
       double equity = AccountInfoDouble(ACCOUNT_EQUITY);
       dailyPnl = closed + equity - AccountInfoDouble(ACCOUNT_BALANCE);
 
-      // A daily stop lasts until the broker's next day; the floor until equity recovers.
-      if(m_breachDay != 0 && m_breachDay != day)
+      // A daily stop lasts until the broker's next day (or until you change the
+      // limit); the floor until equity recovers.
+      if(m_breachDay != 0 && (m_breachDay != day || cfg.dailyLossLimit != m_breachLimit))
          m_breachDay = 0;
       if(cfg.dailyLossLimit > 0 && -dailyPnl >= cfg.dailyLossLimit)
-         m_breachDay = day;
+        {
+         m_breachDay   = day;
+         m_breachLimit = cfg.dailyLossLimit;
+        }
 
       breached = true;
       if(m_breachDay != 0)

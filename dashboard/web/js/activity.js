@@ -1,7 +1,15 @@
 // Activity log: type chips, account filter, search, count and CSV export.
 import { $, esc, ms, pill, rowsOrEmpty } from "./dom.js";
 
-const KIND_TONES = { open: "good", partial: "good", sltp: "good", close: "muted", skip: "warn", error: "bad", risk: "bad" };
+// kind -> [plain label, tone]
+const KINDS = {
+  open: ["Opened", "good"], partial: ["Partly closed", "good"], sltp: ["Stops updated", "good"],
+  close: ["Closed", "muted"], skip: ["Not copied", "warn"], error: ["Failed", "bad"], risk: ["Safety limit", "bad"],
+  config: ["Settings", "muted"], state: ["Status", "muted"], start: ["Started", "muted"], info: ["Note", "muted"],
+};
+const kindPill = (k) => pill(...(KINDS[k] || [k, "muted"]));
+// The speed is shown in its own column, so drop the technical tail from the text.
+const plain = (msg) => msg.replace(/ \| noticed .*$/, "");
 
 let events = [];
 let kinds = null;     // null = all
@@ -10,9 +18,9 @@ const eventRow = (e) => `
   <tr>
     <td class="mono">${esc(e.time.slice(11))}<div class="sub">${esc(e.time.slice(0, 10))}</div></td>
     <td class="mono">${esc(e.login)}</td>
-    <td>${pill(e.kind, KIND_TONES[e.kind] || "muted")}</td>
-    <td class="mono">${e.master ? esc(e.master) : "–"}</td>
-    <td class="msg">${esc(e.msg)}</td>
+    <td>${kindPill(e.kind)}</td>
+    <td class="mono">${e.master ? `#${esc(e.master)}` : "–"}</td>
+    <td class="msg">${esc(plain(e.msg))}</td>
     <td class="num">${e.latency_ms != null ? ms(e.latency_ms) : ""}</td>
   </tr>`;
 

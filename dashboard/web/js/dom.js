@@ -12,7 +12,8 @@ const fmt = (min, max) => (v) =>
 
 export const money = fmt(2, 2);
 export const lots = fmt(2, 3);
-export const ms = (v) => (v ? `${Number(v).toFixed(0)} ms` : "–");
+/** Durations people can read: "320 ms", "1.4 s". */
+export const ms = (v) => (!v ? "–" : v < 1000 ? `${Number(v).toFixed(0)} ms` : `${(v / 1000).toFixed(1)} s`);
 
 /** tone: good | warn | bad | muted */
 export const pill = (label, tone, title = "") =>

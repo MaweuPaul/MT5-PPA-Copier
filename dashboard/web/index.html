@@ -10,13 +10,13 @@
   <aside class="sidebar">
     <div class="brand"><span class="logo" aria-hidden="true">⇉</span><h1>Trade Copier</h1></div>
     <nav>
-      <a href="#overview" data-nav="overview">Overview</a>
-      <a href="#trades" data-nav="trades">Trades &amp; slippage</a>
-      <a href="#activity" data-nav="activity">Activity</a>
-      <a href="#templates" data-nav="templates">Templates</a>
+      <a href="#overview" data-nav="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</a>
+      <a href="#trades" data-nav="trades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>Copied trades</a>
+      <a href="#activity" data-nav="activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Activity</a>
+      <a href="#templates" data-nav="templates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Templates</a>
     </nav>
     <div class="sidebar-foot">
-      <span id="conn" class="pill pill-muted">connecting…</span>
+      <span id="conn" class="pill pill-muted">Connecting…</span>
       <button id="notifyBtn" class="btn btn-small" type="button">Enable alerts</button>
     </div>
   </aside>
@@ -29,34 +29,28 @@
 
     <main>
       <div id="pausedBanner" class="banner" hidden>
-        Copying is <strong>paused</strong>. New master trades are skipped, while closes and SL/TP changes are still mirrored.
+        ⏸ Copying is <strong>paused</strong>. New trades won't be copied, but closing trades and stop changes still are.
       </div>
 
       <!-- Overview -->
       <section data-page="overview" class="page">
+        <div id="health" class="health"><div class="health-icon">…</div><div><h3>Connecting…</h3><p>Looking for your accounts.</p></div></div>
+
         <div class="stats" aria-label="Summary">
-          <div class="stat"><span class="stat-label">Master</span><span id="statMaster" class="stat-value">–</span></div>
-          <div class="stat"><span class="stat-label">Followers copying</span><span id="statFollowers" class="stat-value">–</span></div>
-          <div class="stat"><span class="stat-label">Open copies</span><span id="statCopies" class="stat-value">–</span></div>
-          <div class="stat"><span class="stat-label">Avg copy latency</span><span id="statLatency" class="stat-value">–</span></div>
+          <div class="stat"><span class="stat-label">Accounts copying</span><span id="statFollowers" class="stat-value">–</span></div>
+          <div class="stat"><span class="stat-label">Open copied trades</span><span id="statCopies" class="stat-value">–</span></div>
+          <div class="stat"><span class="stat-label">Today's result (all accounts)</span><span id="statPnl" class="stat-value">–</span></div>
+          <div class="stat"><span class="stat-label">Average copy speed</span><span id="statLatency" class="stat-value">–</span></div>
+        </div>
+
+        <div>
+          <div class="card-head" style="padding: 0 4px 12px; border: 0"><h3>Copying to</h3></div>
+          <div id="followers" class="accounts"><p class="empty">No accounts yet. Attach CopierFollower in each account's MT5.</p></div>
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>Master</h3></div>
-          <div id="masters"><p class="empty">No master found. Attach CopierMaster to a chart in the master terminal.</p></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><h3>Followers</h3></div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr>
-                <th>Account</th><th>State</th><th class="num">Multiplier</th><th class="num">Open</th>
-                <th class="num">Equity</th><th>Today / daily limit</th><th class="num">Latency last / avg</th><th></th>
-              </tr></thead>
-              <tbody id="followers"><tr><td colspan="8" class="empty">No followers yet. Attach CopierFollower in each follower terminal.</td></tr></tbody>
-            </table>
-          </div>
+          <div class="card-head"><h3>Your main account</h3><span class="sub">Trades you place here are copied to the accounts above</span></div>
+          <div id="masters"><p class="empty">Main account not found. Attach CopierMaster to a chart in the master MT5.</p></div>
         </div>
       </section>
 
@@ -65,11 +59,11 @@
         <div class="card">
           <div class="card-head">
             <h3>Copied trades</h3>
-            <span class="sub">Fill price vs the master's open price. Positive slippage = worse than the master.</span>
+            <span class="sub">The price each account got vs your main account. Red = got a worse price.</span>
           </div>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Master trade</th><th>Follower</th><th class="num">Lots</th><th class="num">Fill</th><th class="num">Slippage</th><th class="num">Latency</th><th>Time</th></tr></thead>
+              <thead><tr><th>Main trade</th><th>Account</th><th class="num">Lots</th><th class="num">Price got</th><th class="num">Price difference</th><th class="num">Speed</th><th>Time</th></tr></thead>
               <tbody id="trades"><tr><td colspan="7" class="empty">No copied trades yet.</td></tr></tbody>
             </table>
           </div>
@@ -86,7 +80,7 @@
               <button class="chip" data-kinds="close">Closed</button>
               <button class="chip" data-kinds="skip">Skipped</button>
               <button class="chip" data-kinds="error">Failed</button>
-              <button class="chip" data-kinds="risk,config,state,start,info">Risk &amp; status</button>
+              <button class="chip" data-kinds="risk,config,state,start,info">Status &amp; safety</button>
             </div>
             <div class="filters">
               <select id="logAccount" aria-label="Account"><option value="">All accounts</option></select>
@@ -97,7 +91,7 @@
           <div class="card-sub"><span id="logCount">0 entries</span></div>
           <div class="table-wrap log">
             <table class="table">
-              <thead><tr><th>Time</th><th>Account</th><th>Type</th><th>Master #</th><th>Details</th><th class="num">Latency</th></tr></thead>
+              <thead><tr><th>Time</th><th>Account</th><th>What happened</th><th>Trade</th><th>Details</th><th class="num">Speed</th></tr></thead>
               <tbody id="events"><tr><td colspan="6" class="empty">No activity yet.</td></tr></tbody>
             </table>
           </div>
@@ -113,7 +107,7 @@
           </div>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Name</th><th class="num">Multiplier</th><th>Suffix</th><th class="num">Daily limit</th><th class="num">Delay</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th class="num">Lot size</th><th>Symbol ending</th><th class="num">Daily loss limit</th><th class="num">Delay</th><th></th></tr></thead>
               <tbody id="templates"><tr><td colspan="6" class="empty">No templates yet.</td></tr></tbody>
             </table>
           </div>
@@ -136,7 +130,7 @@
 
       <fieldset>
         <legend>Sizing</legend>
-        <label>Lot multiplier<input type="number" name="multiplier" min="0.01" max="100" step="0.01" required></label>
+        <label>Lot size <small>× your main account's lots (1 = same, 0.5 = half)</small><input type="number" name="multiplier" min="0.01" max="100" step="0.01" required></label>
         <div id="preview" class="preview" aria-live="polite"></div>
         <div class="row">
           <label>Max lot per trade <small>0 = no limit</small><input type="number" name="max_lot" min="0" max="1000" step="0.01"></label>
@@ -155,7 +149,7 @@
         <label class="check"><input type="checkbox" name="close_on_limit"> When a limit is hit, also close this account's copies</label>
         <div class="row">
           <label>Trade from <small>HH:MM, PC time</small><input type="text" name="trade_start" placeholder="08:00" pattern="([01][0-9]|2[0-3]):[0-5][0-9]"></label>
-          <label>Trade until<input type="text" name="trade_end" placeholder="20:00" pattern="([01][0-9]|2[0-3]):[0-5][0-9]"></label>
+          <label>Trade until <small>HH:MM</small><input type="text" name="trade_end" placeholder="20:00" pattern="([01][0-9]|2[0-3]):[0-5][0-9]"></label>
           <label>News pause <small>± minutes, 0 = off</small><input type="number" name="news_minutes" min="0" max="240" step="1"></label>
         </div>
       </fieldset>
