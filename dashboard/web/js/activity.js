@@ -1,8 +1,10 @@
-// The activity log table and its filters.
+// Activity log: type chips, account filter, search, count and CSV export.
 import { $, esc, ms, pill, rowsOrEmpty } from "./dom.js";
-import { getEvents } from "./api.js";
 
-const KIND_TONES = { copy: "good", skip: "warn", error: "bad" };
+const KIND_TONES = { open: "good", partial: "good", sltp: "good", close: "muted", skip: "warn", error: "bad", risk: "bad" };
+
+let events = [];
+let kinds = null;     // null = all
 
 const eventRow = (e) => `
   <tr>
@@ -14,15 +16,37 @@ const eventRow = (e) => `
     <td class="num">${e.latency_ms != null ? ms(e.latency_ms) : ""}</td>
   </tr>`;
 
-export async function refreshActivity() {
-  const kinds = $("#logKind").value ? $("#logKind").value.split(",") : null;
-  try {
-    let events = await getEvents($("#logAccount").value);
-    if (kinds) events = events.filter((e) => kinds.includes(e.kind));
-    $("#events").innerHTML = rowsOrEmpty(events, eventRow, 6, "No activity yet.");
-  } catch {
-    // the overview poll already shows the connection state
-  }
+function visible() {
+  const account = $("#logAccount").value;
+  const q = $("#logSearch").value.trim().toLowerCase();
+  return events.filter((e) =>
+    (!account || String(e.login) === account) &&
+    (!kinds || kinds.includes(e.kind)) &&
+    (!q || `${e.master} ${e.login} ${e.kind} ${e.msg}`.toLowerCase().includes(q)));
+}
+
+function render() {
+  const rows = visible();
+  $("#logCount").textContent = `${rows.length} of ${events.length} entries`;
+  $("#events").innerHTML = rowsOrEmpty(rows, eventRow, 6, "No matching activity.");
+}
+
+/** Called by main with the latest events (newest first). */
+export function renderActivity(latest) {
+  events = latest;
+  render();
+}
+
+function exportCsv() {
+  const cols = ["time", "login", "kind", "master", "msg", "latency_ms", "symbol", "side", "lots", "price", "master_price"];
+  const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const csv = [cols.join(","), ...visible().map((e) => cols.map((c) => cell(e[c])).join(","))].join("\r\n");
+  const a = Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })),
+    download: `tradecopier-activity-${new Date().toISOString().slice(0, 10)}.csv`,
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 /** Keeps the account filter in sync with the followers that exist. */
@@ -37,6 +61,14 @@ export function syncAccountFilter(followers) {
 }
 
 export function initActivity() {
-  $("#logAccount").addEventListener("change", refreshActivity);
-  $("#logKind").addEventListener("change", refreshActivity);
+  $("#kindChips").addEventListener("click", (ev) => {
+    const chip = ev.target.closest(".chip");
+    if (!chip) return;
+    document.querySelectorAll("#kindChips .chip").forEach((c) => c.classList.toggle("active", c === chip));
+    kinds = chip.dataset.kinds ? chip.dataset.kinds.split(",") : null;
+    render();
+  });
+  $("#logAccount").addEventListener("change", render);
+  $("#logSearch").addEventListener("input", render);
+  $("#exportBtn").addEventListener("click", exportCsv);
 }

@@ -8,7 +8,7 @@
 
 #include "Common.mqh"
 
-// kind: copy | skip | error | info | config | state | start
+// kind: open | close | partial | sltp | skip | error | risk | info | config | state | start
 class CTcEventLog
   {
 private:
@@ -26,7 +26,9 @@ public:
 
    void              Close() { m_path = ""; m_login = 0; }
 
-   void              Write(const string kind, const long masterTicket, const string msg, const double latencyMs = -1)
+   // extra: optional pre-built JSON fields (e.g. trade details), no leading comma.
+   void              Write(const string kind, const long masterTicket, const string msg,
+                           const double latencyMs = -1, const string extra = "")
      {
       PrintFormat("TradeCopier: [%s]%s %s", kind,
                   masterTicket > 0 ? StringFormat(" master #%I64d", masterTicket) : "", msg);
@@ -40,6 +42,7 @@ public:
                    + ",\"master\":" + IntegerToString(masterTicket)
                    + ",\"msg\":" + TcJsonStr(msg)
                    + (latencyMs >= 0 ? ",\"latency_ms\":" + TcNum(latencyMs, 1) : "")
+                   + (extra != "" ? "," + extra : "")
                    + "}");
      }
   };

@@ -106,6 +106,8 @@ string TcNum(const double v, const int digits)
    return StringSubstr(s, 0, n);
   }
 
+string TcBool(const bool b) { return b ? "true" : "false"; }
+
 string TcJsonStr(const string s)
   {
    string r = s;

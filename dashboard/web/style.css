@@ -213,3 +213,46 @@ label small { color: var(--muted); font-weight: 400; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .master { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---- layout: sidebar + pages ---- */
+body { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: 18px;
+  padding: 16px 12px; background: var(--panel); border-right: 1px solid var(--border);
+}
+.sidebar .brand { padding: 0 8px; }
+.sidebar nav { display: grid; gap: 2px; }
+.sidebar nav a { padding: 8px 10px; border-radius: 8px; color: var(--muted); text-decoration: none; }
+.sidebar nav a:hover { color: var(--text); background: var(--panel-2); }
+.sidebar nav a.active { color: var(--text); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.sidebar-foot { margin-top: auto; display: grid; gap: 8px; justify-items: start; padding: 0 8px; }
+.content { min-width: 0; }
+.page { display: grid; gap: 16px; }
+h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.card-head.wrap { flex-wrap: wrap; }
+.card-sub { padding: 8px 16px; color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); }
+.spacer { flex: 1; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: none; color: var(--muted); font: inherit; cursor: pointer; }
+.chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+.filters input[type=search] { width: 240px; }
+
+/* risk meter: today's loss vs limit */
+.meter { display: grid; gap: 3px; min-width: 150px; }
+.meter-bar { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.meter-fill { height: 100%; background: var(--good); }
+.meter-fill.warn { background: var(--warn); }
+.meter-fill.bad { background: var(--bad); }
+.pos { color: var(--good); }
+.neg { color: var(--bad); }
+dialog { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+
+@media (max-width: 760px) {
+  body { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .sidebar nav { display: flex; flex-wrap: wrap; }
+  .sidebar-foot { margin: 0; display: flex; }
+  .filters input[type=search] { width: 100%; }
+}

@@ -1,6 +1,7 @@
 // The follower settings dialog: load, live lot preview, validate, save.
-import { $, lots } from "./dom.js";
-import { getConfig, saveConfig } from "./api.js";
+import { $, esc, lots } from "./dom.js";
+import { getConfig, saveConfig, saveTemplate } from "./api.js";
+import { refreshTemplates } from "./templates.js";
 import { copyLots, validMultiplier, MIN_MULTIPLIER, MAX_MULTIPLIER } from "./lots.js";
 
 const dialog = $("#settings");
@@ -17,9 +18,21 @@ const FIELDS = {
   symbol_prefix: "text",
   strip_suffix: "text",
   symbol_map: "text",
+  daily_loss_limit: "number",
+  equity_floor: "number",
+  close_on_limit: "bool",
+  max_open_trades: "number",
+  max_total_lots: "number",
+  trade_start: "text",
+  trade_end: "text",
+  news_minutes: "number",
+  delay_ms: "number",
+  delay_jitter_ms: "number",
+  delay_closes: "bool",
 };
 
 let login = null;
+let templates = {};
 let getOverview = () => null;
 
 function fillForm(config) {
@@ -65,6 +78,9 @@ export async function openSettings(forLogin) {
   $("#settingsTitle").textContent = `Settings · ${login}${f ? ` (${f.server})` : ""}`;
   try {
     fillForm(await getConfig(login));
+    templates = Object.fromEntries(await refreshTemplates());
+    $("#templatePick").innerHTML = `<option value="">-</option>` +
+      Object.keys(templates).map((n) => `<option>${esc(n)}</option>`).join("");
     updatePreview();
     dialog.showModal();
   } catch (err) {
@@ -76,6 +92,22 @@ export async function openSettings(forLogin) {
 export function initSettings({ overview, onSaved }) {
   getOverview = overview;
   form.addEventListener("input", updatePreview);
+  $("#templatePick").addEventListener("change", (ev) => {
+    const t = templates[ev.target.value];
+    if (t) fillForm(t);
+    updatePreview();
+  });
+  $("#saveTemplateBtn").addEventListener("click", async () => {
+    const name = prompt("Template name (e.g. Exness 0.5x):");
+    if (!name) return;
+    try {
+      await saveTemplate(name.trim(), readForm());
+      refreshTemplates();
+      showError("");
+    } catch (err) {
+      showError(err.message);
+    }
+  });
   form.addEventListener("submit", async (ev) => {
     if (ev.submitter?.value !== "save") return; // Cancel / ✕ just close
     ev.preventDefault();

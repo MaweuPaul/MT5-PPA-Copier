@@ -124,3 +124,24 @@ While paused, followers **don't open new copies**. A master trade opened during 
 - `start`
 
 Past 2 MB the file is rotated to `.jsonl.1`.
+
+## Risk, delays and templates (added later)
+
+**Extra config keys** (all optional; `0` or `""` means off):
+- **Risk:** `daily_loss_limit`, `equity_floor`, `close_on_limit`, `max_open_trades`, `max_total_lots`, `trade_start`/`trade_end` (`"HH:MM"`, PC time), `news_minutes` (high-impact MT5 calendar events).
+- **Delays:** `delay_ms` + `delay_jitter_ms` (a random extra delay) before each copy. `delay_closes` applies the delay to closes too. It's off by default, so closes stay instant.
+
+**Daily P&L** = deals closed since the broker's midnight + current floating P&L. It's calculated from history each time, so a restart can't forget today's losses.
+
+**When a limit is hit:**
+- No new copies are opened.
+- With `close_on_limit`, every copy is closed and never reopened.
+- A daily stop lasts until the broker's next day. An equity-floor stop lasts until equity recovers.
+
+**Status** includes `"risk":{"daily_pnl","daily_loss_limit","equity_floor","breached","reason"}`, and the state is `risk_stop` while a limit is hit.
+
+**Event kinds:**
+- `open`, `close`, `partial`, `sltp`, `skip`, `error`, `risk`, `info`, `config`, `state`, `start`.
+- `open` events also carry `symbol`, `side`, `lots`, `price` (the fill), `master_price`, `master_lots` and `point`, used for slippage.
+
+**`templates.json`:** `{"<name>": <config>}`. Only the dashboard uses it, to store setting presets.

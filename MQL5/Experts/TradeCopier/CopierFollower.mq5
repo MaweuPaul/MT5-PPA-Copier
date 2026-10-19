@@ -19,6 +19,7 @@
 #include <TradeCopier\Settings.mqh>
 #include <TradeCopier\EventLog.mqh>
 #include <TradeCopier\Latency.mqh>
+#include <TradeCopier\Risk.mqh>
 
 // The comment after each input is the label MT5 shows in the Inputs tab.
 // Sizing, Symbols and Copy SL/TP are only defaults: once settings are saved
@@ -59,6 +60,7 @@ CTcSymbolMap g_symbols;
 CTcSettings  g_cfg;
 CTcEventLog  g_log;
 CTcLatency   g_latency;
+CTcRisk      g_risk;
 TcLink       g_links[];
 TcSnapshot   g_snap;
 
@@ -106,9 +108,11 @@ int OnInit()
    g_state = g_linksFile = g_statusFile = g_configFile = g_configText = g_controlText = "";
    ArrayResize(g_links, 0);
    g_latency.Reset();
+   g_risk.Reset();
    g_log.Close();
-   g_cfg.Set(true, LotMultiplier, MaxLotPerTrade, RoundUpToMinLot, CopySLTP,
-             SymbolSuffix, SymbolPrefix, StripMasterSuffix, SymbolMap);
+   g_cfg.SetCopying(true, LotMultiplier, MaxLotPerTrade, RoundUpToMinLot, CopySLTP,
+                    SymbolSuffix, SymbolPrefix, StripMasterSuffix, SymbolMap);
+   MathSrand((uint)(GetMicrosecondCount() & 0x7FFFFFFF));   // random delays differ per terminal
 
    TcEnsureFolders();
    g_masterFile = TcMasterFile(MasterId);
@@ -158,6 +162,7 @@ void Step()
      {
       g_lastFilesMs = now;
       CheckDashboardFiles();
+      UpdateRisk();
      }
 
    // A failed read is usually the master rewriting the file right now, so
@@ -194,7 +199,7 @@ void Step()
         {
          // Paused still mirrors closes and SL/TP so nothing is left unmanaged;
          // it only stops new copies from being opened.
-         SetState(CopyingNew() ? "copying" : "paused");
+         SetState(g_risk.breached ? "risk_stop" : CopyingNew() ? "copying" : "paused");
          Reconcile(now);
         }
      }
@@ -251,7 +256,36 @@ bool TradingAllowed()
           AccountInfoInteger(ACCOUNT_TRADE_ALLOWED);
   }
 
-bool CopyingNew() { return g_cfg.enabled && !g_paused; }
+bool CopyingNew() { return g_cfg.enabled && !g_paused && !g_risk.breached; }
+
+void UpdateRisk()
+  {
+   bool was = g_risk.breached;
+   g_risk.Update(g_cfg);
+   if(g_risk.breached && !was)
+     {
+      g_log.Write("risk", 0, "copying stopped: " + g_risk.reason +
+                  (g_cfg.closeOnLimit ? " - closing all copies" : " - open copies are kept"));
+      Alert("TradeCopier: ", g_risk.reason);
+     }
+   else if(!g_risk.breached && was)
+      g_log.Write("risk", 0, "risk limit cleared - copying new trades again");
+  }
+
+// Why a new copy shouldn't be opened right now, or "" if it may.
+string BlockReason(const string sym, const double lots)
+  {
+   if(!CTcRisk::InTradingHours(g_cfg))
+      return StringFormat("outside trading hours %s-%s", g_cfg.tradeStart, g_cfg.tradeEnd);
+   string news;
+   if(CTcRisk::NewsNear(sym, g_cfg.newsMinutes, news))
+      return StringFormat("high-impact news within %d min: %s", g_cfg.newsMinutes, news);
+   if(g_cfg.maxOpenTrades > 0 && OpenCopies() >= g_cfg.maxOpenTrades)
+      return StringFormat("max open trades (%d) reached", g_cfg.maxOpenTrades);
+   if(g_cfg.maxTotalLots > 0 && OpenLots() + lots > g_cfg.maxTotalLots + 1e-9)
+      return StringFormat("max total lots (%s) would be exceeded", TcNum(g_cfg.maxTotalLots, 2));
+   return "";
+  }
 
 //+------------------------------------------------------------------+
 //| Dashboard files: per-follower settings and the global pause      |
@@ -312,14 +346,15 @@ void Reconcile(const ulong now)
       if(k < 0)
         {
          k = TcLinkAdd(g_links, g_snap.positions[i].ticket, g_cfg.multiplier, TC_LINK_PENDING);
+         g_links[k].retryAtMs = now + g_cfg.NextDelayMs();   // configured copy delay
          dirty = true;
         }
       if(g_links[k].state == TC_LINK_PENDING)
         {
-         // Paused: a trade opened now is skipped for good rather than copied
-         // late, at a worse price, when copying resumes.
+         // Paused / risk stop: a trade opened now is skipped for good rather
+         // than copied late, at a worse price, when copying resumes.
          if(!CopyingNew())
-            dirty |= Skip(k, "copying is paused");
+            dirty |= Skip(k, g_risk.breached ? g_risk.reason : "copying is paused");
          else if(now >= g_links[k].retryAtMs)
             dirty |= TryOpen(k, i, now);
         }
@@ -333,11 +368,27 @@ void Reconcile(const ulong now)
      {
       if(SnapshotIndex(g_links[k].master) >= 0)
          continue;
-      if(g_links[k].state == TC_LINK_OPEN && (now < g_links[k].retryAtMs || !CloseCopy(k, now)))
-         continue;                           // in flight, or retry later
+      if(g_links[k].state == TC_LINK_OPEN)
+        {
+         if(g_cfg.delayCloses && g_links[k].closeDueMs == 0 && g_links[k].closeSentMs == 0)
+            g_links[k].closeDueMs = now + g_cfg.NextDelayMs();
+         if(now < g_links[k].closeDueMs || now < g_links[k].retryAtMs || !CloseCopy(k, now))
+            continue;                        // delayed, in flight, or retry later
+        }
       TcLinkRemove(g_links, k);
       dirty = true;
      }
+
+   // 3. Risk limit hit with "close on limit": close every copy; the master's
+   //    trades stay open, so mark the links closed so they're never reopened.
+   if(g_risk.breached && g_cfg.closeOnLimit)
+      for(int k = 0; k < ArraySize(g_links); k++)
+         if(g_links[k].state == TC_LINK_OPEN && now >= g_links[k].retryAtMs && CloseCopy(k, now))
+           {
+            g_links[k].state = TC_LINK_CLOSED;
+            g_links[k].closeSentMs = 0;
+            dirty = true;
+           }
 
    g_closesInFlight = 0;
    for(int k = 0; k < ArraySize(g_links); k++)
@@ -397,6 +448,9 @@ bool TryOpen(const int k, const int i, const ulong now)
    double lots = TargetLots(sym, i, k);
    if(lots <= 0)
       return Skip(k, "copy size is below the broker's minimum lot");
+   string block = BlockReason(sym, lots);
+   if(block != "")
+      return Skip(k, block);
 
    bool  buy = g_snap.positions[i].type == POSITION_TYPE_BUY;
    ulong t0  = GetMicrosecondCount();
@@ -412,7 +466,15 @@ bool TryOpen(const int k, const int i, const ulong now)
    if(rc == TRADE_RETCODE_DONE || rc == TRADE_RETCODE_DONE_PARTIAL || rc == TRADE_RETCODE_PLACED)
      {
       MarkOpen(k, (long)g_trade.ResultOrder(), TcNowMs());   // hedging: position ticket = opening order ticket
-      LogCopy(StringFormat("OPEN %s %s %s", buy ? "BUY" : "SELL", TcNum(lots, 8), sym), mt, t0, NoticeMs());
+      // Fill vs master open price -> slippage, shown on the dashboard's Trades page.
+      string details = "\"symbol\":" + TcJsonStr(sym)
+                       + ",\"side\":" + TcJsonStr(buy ? "buy" : "sell")
+                       + ",\"lots\":" + TcNum(lots, 8)
+                       + ",\"price\":" + TcNum(g_trade.ResultPrice(), 8)
+                       + ",\"master_price\":" + TcNum(g_snap.positions[i].price, 8)
+                       + ",\"master_lots\":" + TcNum(g_snap.positions[i].volume, 8)
+                       + ",\"point\":" + TcNum(SymbolInfoDouble(sym, SYMBOL_POINT), 10);
+      LogCopy("open", StringFormat("OPEN %s %s %s", buy ? "BUY" : "SELL", TcNum(lots, 8), sym), mt, t0, NoticeMs(), details);
       return true;
      }
 
@@ -483,7 +545,7 @@ bool SyncVolume(const int k, const int i, const ulong now, const ulong ft, const
    g_trade.SetTypeFillingBySymbol(sym);
    if(g_trade.PositionClosePartial(ft, cut) && g_trade.ResultRetcode() == TRADE_RETCODE_DONE)
      {
-      LogCopy(StringFormat("PARTIAL CLOSE %s %s", TcNum(cut, 8), sym), g_links[k].master, t0, NoticeMs());
+      LogCopy("partial", StringFormat("PARTIAL CLOSE %s %s", TcNum(cut, 8), sym), g_links[k].master, t0, NoticeMs());
       return true;
      }
    g_log.Write("error", g_links[k].master, StringFormat("partial close of #%I64u failed: %u %s",
@@ -509,7 +571,7 @@ void SyncStops(const int k, const int i, const ulong now, const ulong ft, const 
    ulong t0 = GetMicrosecondCount();
    if(g_trade.PositionModify(ft, sl, tp) && g_trade.ResultRetcode() == TRADE_RETCODE_DONE)
      {
-      LogCopy(StringFormat("SL/TP %s / %s", TcNum(sl, digits), TcNum(tp, digits)), g_links[k].master, t0, NoticeMs());
+      LogCopy("sltp", StringFormat("SL/TP %s / %s", TcNum(sl, digits), TcNum(tp, digits)), g_links[k].master, t0, NoticeMs());
       return;
      }
    uint rc = g_trade.ResultRetcode();
@@ -535,7 +597,7 @@ bool CloseCopy(const int k, const ulong now)
      {
       if(g_links[k].closeSentMs != 0)
         {
-         LogCopy(StringFormat("CLOSE #%I64u", ft), g_links[k].master, g_links[k].closeSentUs, g_links[k].closeNoticeMs);
+         LogCopy("close", StringFormat("CLOSE #%I64u", ft), g_links[k].master, g_links[k].closeSentUs, g_links[k].closeNoticeMs);
          return true;
         }
       return now - g_links[k].openedMs >= TC_APPEAR_GRACE_MS;   // gone - unless it was opened a moment ago
@@ -628,12 +690,14 @@ double NoticeMs()
   }
 
 // Records a completed copy action. t0 = microsecond timer when we sent it.
-void LogCopy(const string what, const long masterTicket, const ulong t0, const double noticeMs)
+// kind: open | close | partial | sltp. details: optional extra JSON fields.
+void LogCopy(const string kind, const string what, const long masterTicket, const ulong t0,
+             const double noticeMs, const string details = "")
   {
    double execMs = (GetMicrosecondCount() - t0) / 1000.0;
    g_latency.Add(noticeMs + execMs);
-   g_log.Write("copy", masterTicket, StringFormat("%s | noticed %.0f ms after master, executed in %.1f ms",
-                                                  what, noticeMs, execMs), noticeMs + execMs);
+   g_log.Write(kind, masterTicket, StringFormat("%s | noticed %.0f ms after master, executed in %.1f ms",
+                                                what, noticeMs, execMs), noticeMs + execMs, details);
   }
 
 void SetState(const string state)
@@ -653,6 +717,15 @@ int OpenCopies()
       if(g_links[k].state == TC_LINK_OPEN)
          n++;
    return n;
+  }
+
+double OpenLots()
+  {
+   double total = 0;
+   for(int k = 0; k < ArraySize(g_links); k++)
+      if(g_links[k].state == TC_LINK_OPEN && PositionSelectByTicket((ulong)g_links[k].follower))
+         total += PositionGetDouble(POSITION_VOLUME);
+   return total;
   }
 
 void WriteStatusIfDue(const ulong now)
@@ -683,5 +756,6 @@ void WriteStatusIfDue(const ulong now)
               + ",\"updated_ms\":" + IntegerToString((long)now)
               + ",\"updated_local\":" + TcJsonStr(TimeToString(TimeLocal(), TIME_DATE | TIME_SECONDS))
               + ",\"settings\":" + g_cfg.ToJson()
+              + ",\"risk\":" + g_risk.ToJson(g_cfg)
               + "}");
   }

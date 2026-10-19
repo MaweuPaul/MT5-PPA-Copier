@@ -30,6 +30,7 @@ struct TcLink
    ulong             closeSentMs;   // async close in flight since (0 = none)
    ulong             closeSentUs;   // same moment, microsecond timer, for latency
    double            closeNoticeMs; // master publish -> we noticed, captured at send
+   ulong             closeDueMs;    // delayed close: don't send before this (0 = not scheduled)
   };
 
 int TcLinkFind(const TcLink &links[], const long master)
@@ -56,6 +57,7 @@ int TcLinkAdd(TcLink &links[], const long master, const double multiplier, const
    links[n].closeSentMs   = 0;
    links[n].closeSentUs   = 0;
    links[n].closeNoticeMs = 0;
+   links[n].closeDueMs    = 0;
    return n;
   }
 

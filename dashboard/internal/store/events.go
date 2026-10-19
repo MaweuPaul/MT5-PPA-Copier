@@ -13,10 +13,19 @@ type Event struct {
 	Time      string   `json:"time"` // local "YYYY.MM.DD HH:MM:SS"
 	Ms        int64    `json:"ms"`   // Windows uptime ms, shared by all terminals
 	Login     int64    `json:"login"`
-	Kind      string   `json:"kind"` // copy | skip | error | info | config | state | start
+	Kind      string   `json:"kind"` // open | close | partial | sltp | skip | error | risk | info | config | state | start
 	Master    int64    `json:"master"`
 	Msg       string   `json:"msg"`
 	LatencyMs *float64 `json:"latency_ms,omitempty"`
+
+	// Only on "open": the fill, for slippage against the master.
+	Symbol      string  `json:"symbol,omitempty"`
+	Side        string  `json:"side,omitempty"`
+	Lots        float64 `json:"lots,omitempty"`
+	Price       float64 `json:"price,omitempty"`
+	MasterPrice float64 `json:"master_price,omitempty"`
+	MasterLots  float64 `json:"master_lots,omitempty"`
+	Point       float64 `json:"point,omitempty"`
 }
 
 // Events returns the newest `limit` events, newest first; login "" = all.

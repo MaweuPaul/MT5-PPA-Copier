@@ -1,12 +1,17 @@
 // Entry point: wires the views together and runs the polling loops.
 import { $ } from "./dom.js";
-import { getOverview, setPaused } from "./api.js";
+import { getOverview, getEvents, setPaused } from "./api.js";
+import { initRouter } from "./router.js";
 import { renderOverview } from "./overview.js";
-import { initActivity, refreshActivity, syncAccountFilter } from "./activity.js";
+import { initActivity, renderActivity, syncAccountFilter } from "./activity.js";
+import { renderTrades } from "./trades.js";
 import { initSettings } from "./settings.js";
+import { initTemplates } from "./templates.js";
+import { initNotify, checkOverview, checkEvents } from "./notify.js";
 
 const OVERVIEW_EVERY_MS = 1000;
-const ACTIVITY_EVERY_MS = 2000;
+const EVENTS_EVERY_MS = 2000;
+const EVENT_LIMIT = 1000;
 
 let overview = null;
 
@@ -21,8 +26,21 @@ async function refreshOverview() {
     setConnection(true);
     renderOverview(overview);
     syncAccountFilter(overview.followers);
+    checkOverview(overview);
   } catch {
     setConnection(false);
+  }
+}
+
+// One events fetch feeds the activity log, the trades page and alerts.
+async function refreshEvents() {
+  try {
+    const events = await getEvents("", EVENT_LIMIT);
+    renderActivity(events);
+    renderTrades(events);
+    checkEvents(events);
+  } catch {
+    // the overview poll already shows the connection state
   }
 }
 
@@ -36,16 +54,19 @@ $("#pauseBtn").addEventListener("click", async (ev) => {
   refreshOverview();
 });
 
+initRouter();
 initActivity();
+initTemplates();
+initNotify();
 initSettings({
   overview: () => overview,
   onSaved: () => {
     refreshOverview();
-    setTimeout(refreshActivity, 1500); // the EA logs "settings applied" within ~0.5 s
+    setTimeout(refreshEvents, 1500); // the EA logs "settings applied" within ~0.5 s
   },
 });
 
 refreshOverview();
-refreshActivity();
+refreshEvents();
 setInterval(refreshOverview, OVERVIEW_EVERY_MS);
-setInterval(refreshActivity, ACTIVITY_EVERY_MS);
+setInterval(refreshEvents, EVENTS_EVERY_MS);

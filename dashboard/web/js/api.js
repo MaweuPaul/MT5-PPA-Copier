@@ -22,3 +22,11 @@ export const getConfig = (login) => request(followerPath(login));
 export const saveConfig = (login, config) => request(followerPath(login), { method: "PUT", body: config });
 
 export const setPaused = (paused) => request(paused ? "/api/pause" : "/api/resume", { method: "POST" });
+
+const templatePath = (name) => `/api/templates/${encodeURIComponent(name)}`;
+
+export const getTemplates = () => request("/api/templates");
+
+export const saveTemplate = (name, config) => request(templatePath(name), { method: "PUT", body: config });
+
+export const deleteTemplate = (name) => request(templatePath(name), { method: "DELETE" });

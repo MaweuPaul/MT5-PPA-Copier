@@ -11,7 +11,21 @@ const STATES = {
   netting_unsupported: ["Netting account", "bad"],
   is_master:           ["Wrong MasterId", "bad"],
   stopped:             ["Stopped", "muted"],
+  risk_stop:           ["Risk stop", "bad"],
 };
+
+// Today's P&L, and how much of the daily loss limit is used.
+function riskMeter({ risk }) {
+  if (!risk) return "–";
+  const pnl = `<span class="${risk.daily_pnl < 0 ? "neg" : "pos"}">${money(risk.daily_pnl)}</span>`;
+  if (!risk.daily_loss_limit) return `${pnl} <span class="sub">no limit</span>`;
+  const used = Math.min(100, Math.max(0, (-risk.daily_pnl / risk.daily_loss_limit) * 100));
+  const tone = risk.breached || used >= 100 ? "bad" : used >= 70 ? "warn" : "";
+  return `<div class="meter" title="${esc(risk.reason || `${used.toFixed(0)}% of daily limit used`)}">
+      <span>${pnl} <span class="sub">/ −${money(risk.daily_loss_limit)}</span></span>
+      <div class="meter-bar"><div class="meter-fill ${tone}" style="width:${used}%"></div></div>
+    </div>`;
+}
 
 const onlinePill = (online, yes = "Online") => (online ? pill(yes, "good") : pill("Offline", "bad"));
 
@@ -80,8 +94,8 @@ const followerRow = (f) => `
     <td>${followerState(f)}</td>
     <td class="num">×${esc(f.multiplier)}</td>
     <td class="num">${esc(f.open_copies)}</td>
-    <td class="num">${money(f.balance)}</td>
-    <td class="num">${money(f.equity)}</td>
-    <td class="num">${ms(f.latency_last_ms)} / ${ms(f.latency_avg_ms)} / ${ms(f.latency_max_ms)}</td>
+    <td class="num">${money(f.equity)}<div class="sub">bal ${money(f.balance)}</div></td>
+    <td>${riskMeter(f)}</td>
+    <td class="num">${ms(f.latency_last_ms)} / ${ms(f.latency_avg_ms)}</td>
     <td class="num"><button class="btn btn-small" type="button" data-settings="${esc(f.login)}">Settings</button></td>
   </tr>`;

@@ -18,4 +18,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/pause", a.setPaused(true))
 	mux.HandleFunc("POST /api/resume", a.setPaused(false))
 	mux.HandleFunc("GET /api/events", a.events)
+	mux.HandleFunc("GET /api/templates", a.listTemplates)
+	mux.HandleFunc("PUT /api/templates/{name}", a.putTemplate)
+	mux.HandleFunc("DELETE /api/templates/{name}", a.deleteTemplate)
 }

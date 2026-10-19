@@ -24,7 +24,16 @@ type Follower struct {
 	LatencyMaxMs  float64 `json:"latency_max_ms"`
 	UpdatedLocal  string  `json:"updated_local"`
 	Settings      Config  `json:"settings"`
+	Risk          Risk    `json:"risk"`
 	Liveness
+}
+
+type Risk struct {
+	DailyPnl       float64 `json:"daily_pnl"`
+	DailyLossLimit float64 `json:"daily_loss_limit"`
+	EquityFloor    float64 `json:"equity_floor"`
+	Breached       bool    `json:"breached"`
+	Reason         string  `json:"reason"`
 }
 
 func (s *Store) statusPath(login string) string {
