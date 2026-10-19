@@ -13,6 +13,7 @@ struct TcPosition
    string            symbol;
    int               type;          // POSITION_TYPE_BUY or POSITION_TYPE_SELL
    double            volume;        // lots
+   double            contract;      // master's contract size per lot (0 = unknown)
    double            price;
    double            sl;            // 0 = none
    double            tp;            // 0 = none
@@ -51,6 +52,7 @@ string TcSnapshotToJson(const TcSnapshot &s)
            + ",\"symbol\":" + TcJsonStr(s.positions[i].symbol)
            + ",\"type\":" + (s.positions[i].type == POSITION_TYPE_BUY ? "\"buy\"" : "\"sell\"")
            + ",\"volume\":" + TcNum(s.positions[i].volume, 8)
+           + ",\"contract\":" + TcNum(s.positions[i].contract, 8)
            + ",\"price\":" + TcNum(s.positions[i].price, 8)
            + ",\"sl\":" + TcNum(s.positions[i].sl, 8)
            + ",\"tp\":" + TcNum(s.positions[i].tp, 8)
@@ -112,6 +114,7 @@ bool TcParseSnapshot(const string &text, TcSnapshot &s)
 
       int n = ArraySize(s.positions);
       ArrayResize(s.positions, n + 1, 32);
+      s.positions[n].contract = 0;
       s.positions[n].sl      = 0;
       s.positions[n].tp      = 0;
       s.positions[n].price   = 0;
@@ -125,6 +128,7 @@ bool TcParseSnapshot(const string &text, TcSnapshot &s)
          !TcJsonDouble(text, "volume", ob, to, s.positions[n].volume))
          return false;
       s.positions[n].type = (side == "buy") ? (int)POSITION_TYPE_BUY : (int)POSITION_TYPE_SELL;
+      TcJsonDouble(text, "contract", ob, to, s.positions[n].contract);
       TcJsonDouble(text, "price", ob, to, s.positions[n].price);
       TcJsonDouble(text, "sl", ob, to, s.positions[n].sl);
       TcJsonDouble(text, "tp", ob, to, s.positions[n].tp);

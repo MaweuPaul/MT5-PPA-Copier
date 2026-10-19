@@ -7,8 +7,28 @@
 // Resolution order for a master symbol such as "EURUSD":
 //   1. explicit map entry      "XAUUSD=GOLD;US30=DJ30"
 //   2. prefix + base + suffix  base = master symbol minus StripMasterSuffix
-//   3. base, then the master symbol unchanged
+//   3. base, the master symbol unchanged, then base + an auto-detected suffix
+//   4. the same for each built-in alias (GOLD -> XAUUSD, US30 -> DJ30 ...)
 // Results (including "not found") are cached, so each symbol is looked up once.
+
+// Names brokers commonly use for the same instrument. Each line is one group.
+// Contract sizes often differ between these - the follower adjusts lots for that.
+string g_tcAliasGroups[] =
+  {
+   "XAUUSD,GOLD",
+   "XAGUSD,SILVER",
+   "US30,DJ30,WS30,DJI30,DOW30,US30CASH",
+   "NAS100,US100,USTEC,NDX100,NQ100,USTECH,US100CASH",
+   "SPX500,US500,SP500,SPX,US500CASH",
+   "GER40,DE40,GER30,DE30,DAX40,GER40CASH",
+   "UK100,FTSE100,UK100CASH",
+   "JPN225,JP225,NIKKEI225,JP225CASH",
+   "USOIL,WTI,XTIUSD,USOUSD,OILUSD",
+   "UKOIL,BRENT,XBRUSD,UKOUSD",
+   "BTCUSD,BITCOIN",
+   "ETHUSD,ETHEREUM"
+  };
+
 class CTcSymbolMap
   {
 private:
@@ -54,6 +74,43 @@ private:
         {
          PrintFormat("TradeCopier: no suffix set - auto-detected '%s' for '%s'", found, base);
          return found;
+        }
+      return "";
+     }
+
+   // prefix + name + suffix, then name, then name + auto-detected suffix.
+   string            FindName(const string name)
+     {
+      if(Usable(m_prefix + name + m_suffix))
+         return m_prefix + name + m_suffix;
+      if(Usable(name))
+         return name;
+      return AutoSuffix(name);
+     }
+
+   // Tries the other names in `name`'s alias group (case-insensitive).
+   string            FindAlias(const string name)
+     {
+      string upper = name;
+      StringToUpper(upper);
+      for(int g = 0; g < ArraySize(g_tcAliasGroups); g++)
+        {
+         string names[];
+         int n = StringSplit(g_tcAliasGroups[g], ',', names);
+         bool inGroup = false;
+         for(int i = 0; i < n && !inGroup; i++)
+            inGroup = (names[i] == upper);
+         if(!inGroup)
+            continue;
+         for(int i = 0; i < n; i++)
+           {
+            if(names[i] == upper)
+               continue;
+            string found = FindName(names[i]);
+            if(found != "")
+               return found;
+           }
+         return "";
         }
       return "";
      }
@@ -110,14 +167,11 @@ public:
          if(stripLen > 0 && len > stripLen && StringSubstr(base, len - stripLen) == m_strip)
             base = StringSubstr(base, 0, len - stripLen);
 
-         if(Usable(m_prefix + base + m_suffix))
-            result = m_prefix + base + m_suffix;
-         else if(Usable(base))
-            result = base;
-         else if(Usable(masterSymbol))
+         result = FindName(base);
+         if(result == "" && Usable(masterSymbol))
             result = masterSymbol;
-         else
-            result = AutoSuffix(base);
+         if(result == "")
+            result = FindAlias(base);
         }
 
       int n = ArraySize(m_cacheKey);

@@ -79,6 +79,7 @@ void Publish()
       g_snap.positions[n].symbol  = PositionGetString(POSITION_SYMBOL);
       g_snap.positions[n].type    = (int)PositionGetInteger(POSITION_TYPE);
       g_snap.positions[n].volume  = PositionGetDouble(POSITION_VOLUME);
+      g_snap.positions[n].contract = SymbolInfoDouble(g_snap.positions[n].symbol, SYMBOL_TRADE_CONTRACT_SIZE);
       g_snap.positions[n].price   = PositionGetDouble(POSITION_PRICE_OPEN);
       g_snap.positions[n].sl      = PositionGetDouble(POSITION_SL);
       g_snap.positions[n].tp      = PositionGetDouble(POSITION_TP);

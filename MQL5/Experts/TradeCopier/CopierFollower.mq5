@@ -316,7 +316,11 @@ bool TryOpen(const int k, const int i, const ulong now)
       return true;
      }
 
-   double lots = NormalizeLots(sym, g_snap.positions[i].volume * g_links[k].multiplier);
+   double ratio = ContractRatio(sym, i);
+   if(ratio != 1.0)
+      PrintFormat("TradeCopier: %s contract size differs from master's %s - lots scaled x%s",
+                  sym, g_snap.positions[i].symbol, TcNum(ratio, 6));
+   double lots = TargetLots(sym, i, k);
    if(lots <= 0)
       return Skip(k, "copy size is below the broker's minimum lot");
 
@@ -381,7 +385,7 @@ bool SyncOpen(const int k, const int i, const ulong now)
    long   mt     = g_links[k].master;
 
    // Master partially closed: shrink our copy to the same ratio.
-   double target = NormalizeLots(sym, g_snap.positions[i].volume * g_links[k].multiplier);
+   double target = TargetLots(sym, i, k);
    double step   = SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP);
    if(target > 0 && step > 0 && vol - target >= step * 0.5)
      {
@@ -526,6 +530,24 @@ int StepDigits(const double step)
    while(d < 8 && MathAbs(step * MathPow(10, d) - MathRound(step * MathPow(10, d))) > 1e-9)
       d++;
    return d;
+  }
+
+// Brokers can define one lot differently for the same instrument (gold is
+// usually 100 oz, but indices vary a lot). Scale so the copy has the same
+// exposure as the master. 1.0 when either side's contract size is unknown.
+double ContractRatio(const string sym, const int i)
+  {
+   double master = g_snap.positions[i].contract;
+   double mine   = SymbolInfoDouble(sym, SYMBOL_TRADE_CONTRACT_SIZE);
+   if(master <= 0 || mine <= 0 || MathAbs(master - mine) < 1e-9)
+      return 1.0;
+   return master / mine;
+  }
+
+// This copy's lots: master lots x the link's multiplier x contract-size ratio.
+double TargetLots(const string sym, const int i, const int k)
+  {
+   return NormalizeLots(sym, g_snap.positions[i].volume * g_links[k].multiplier * ContractRatio(sym, i));
   }
 
 // Rounds down to the broker's lot step and applies min/max limits.
