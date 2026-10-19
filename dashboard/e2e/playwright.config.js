@@ -1,5 +1,9 @@
 // End-to-end tests against the running dashboard (and the live demo EAs).
 // Start the dashboard first: ..\tradecopier-dashboard.exe -open=false
+//
+// WARNING: the tests briefly pause copying and change follower settings
+// (restored afterwards). Don't place trades on the master while they run:
+// a trade opened during the pause test is skipped for good.
 const { defineConfig } = require("@playwright/test");
 
 module.exports = defineConfig({

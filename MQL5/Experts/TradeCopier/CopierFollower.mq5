@@ -453,15 +453,23 @@ bool TryOpen(const int k, const int i, const ulong now)
       return Skip(k, block);
 
    bool  buy = g_snap.positions[i].type == POSITION_TYPE_BUY;
-   ulong t0  = GetMicrosecondCount();
+   ENUM_ORDER_TYPE type = buy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL;
    MqlTick tick;
+   if(!SymbolInfoTick(sym, tick) || tick.bid <= 0)
+      return RetryOpen(k, now, mt, sym, 0, "no price yet for " + sym);
+   double price = buy ? tick.ask : tick.bid;
+
+   // Not enough margin won't fix itself in seconds: say so and don't retry.
+   double margin = 0, free = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+   if(OrderCalcMargin(type, sym, lots, price, margin) && margin > free)
+      return Skip(k, StringFormat("not enough free margin: needs %s, %s available", TcNum(margin, 2), TcNum(free, 2)));
+
+   ulong t0 = GetMicrosecondCount();
    g_trade.SetTypeFillingBySymbol(sym);
    // Open without SL/TP: a stop that's invalid on this broker would reject the
    // whole order. SL/TP are set right after by SyncOpen.
-   bool sent = SymbolInfoTick(sym, tick) &&
-               g_trade.PositionOpen(sym, buy ? ORDER_TYPE_BUY : ORDER_TYPE_SELL, lots,
-                                    buy ? tick.ask : tick.bid, 0, 0, TcCopyComment(mt));
-   uint rc = sent ? g_trade.ResultRetcode() : 0;
+   g_trade.PositionOpen(sym, type, lots, price, 0, 0, TcCopyComment(mt));
+   uint rc = g_trade.ResultRetcode();
 
    if(rc == TRADE_RETCODE_DONE || rc == TRADE_RETCODE_DONE_PARTIAL || rc == TRADE_RETCODE_PLACED)
      {
@@ -478,10 +486,19 @@ bool TryOpen(const int k, const int i, const ulong now)
       return true;
      }
 
+   // Rejections that retrying can't fix.
+   if(rc == TRADE_RETCODE_NO_MONEY || rc == TRADE_RETCODE_MARKET_CLOSED || rc == TRADE_RETCODE_TRADE_DISABLED ||
+      rc == TRADE_RETCODE_INVALID_VOLUME || rc == TRADE_RETCODE_LIMIT_VOLUME || rc == TRADE_RETCODE_LIMIT_POSITIONS)
+      return Skip(k, StringFormat("broker rejected %s: %s", sym, g_trade.ResultRetcodeDescription()));
+   return RetryOpen(k, now, mt, sym, rc, rc ? g_trade.ResultRetcodeDescription() : "order not sent");
+  }
+
+// Logs a failed open and schedules a retry, or gives up after MaxOpenAttempts.
+bool RetryOpen(const int k, const ulong now, const long mt, const string sym, const uint rc, const string why)
+  {
    g_links[k].attempts++;
-   g_log.Write("error", mt, StringFormat("open %s failed (attempt %d/%d): %u %s",
-                                         sym, g_links[k].attempts, MaxOpenAttempts, rc,
-                                         sent ? g_trade.ResultRetcodeDescription() : "no price / not sent"));
+   g_log.Write("error", mt, StringFormat("open %s failed (attempt %d/%d): %s",
+                                         sym, g_links[k].attempts, MaxOpenAttempts, why));
    if(g_links[k].attempts >= MaxOpenAttempts)
      {
       Alert(StringFormat("TradeCopier: gave up copying master #%I64d (%s) after %d attempts", mt, sym, MaxOpenAttempts));
