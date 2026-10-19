@@ -55,6 +55,7 @@ ulong  g_detectMs     = 0;       // when we noticed the current snapshot
 ulong  g_lastReconMs  = 0;
 ulong  g_lastStatusMs = 0;
 ulong  g_readFailSinceMs = 0;
+int    g_closesInFlight  = 0;
 string g_state        = "";
 string g_masterFile   = "";
 string g_linksFile    = "";
@@ -85,6 +86,7 @@ int OnInit()
    g_lastReconMs = 0;
    g_lastStatusMs = 0;
    g_readFailSinceMs = 0;
+   g_closesInFlight = 0;
    g_state = "";
    g_latLast = 0;
    g_latSum = 0;
@@ -151,9 +153,11 @@ void Step()
 
    // Full parse only when the master wrote something new, plus a periodic
    // pass so retries and backoffs still run while the master is quiet.
-   long seq = 0;
-   bool changed = TcPeekSeq(text, seq) && seq != g_lastSeq;
-   if((changed || now - g_lastReconMs >= 200) && TcParseSnapshot(text, g_snap))
+   // While async closes are in flight, reconcile every poll to confirm them fast.
+   long  seq = 0;
+   bool  changed = TcPeekSeq(text, seq) && seq != g_lastSeq;
+   ulong every   = (g_closesInFlight > 0) ? 0 : 200;
+   if((changed || now - g_lastReconMs >= every) && TcParseSnapshot(text, g_snap))
      {
       g_lastSeq     = g_snap.seq;
       g_lastReconMs = now;
@@ -271,6 +275,7 @@ void Reconcile(const ulong now)
      }
 
    // 2. Links whose master position is gone: close our copy, then forget it.
+   //    Closes are sent async, so a close-all reaches the broker all at once.
    for(int k = ArraySize(g_links) - 1; k >= 0; k--)
      {
       if(SnapshotIndex(g_links[k].master) >= 0)
@@ -278,11 +283,16 @@ void Reconcile(const ulong now)
       if(g_links[k].state == TC_LINK_OPEN)
         {
          if(now < g_links[k].retryAtMs || !CloseCopy(k, now))
-            continue;                        // keep the link and retry later
+            continue;                        // in flight, or retry later
         }
       TcLinkRemove(g_links, k);
       dirty = true;
      }
+
+   g_closesInFlight = 0;
+   for(int k = 0; k < ArraySize(g_links); k++)
+      if(g_links[k].closeSentMs != 0)
+         g_closesInFlight++;
 
    if(dirty)
       TcLinksSave(g_links, g_linksFile);
@@ -422,22 +432,46 @@ bool SyncOpen(const int k, const int i, const ulong now)
    return false;
   }
 
-// Returns true once the copy is closed (or already gone).
+// Sends the close without waiting for the broker's reply (OrderSendAsync),
+// so closing many copies doesn't queue them one round trip after another.
+// Returns true once the copy is confirmed gone.
 bool CloseCopy(const int k, const ulong now)
   {
    ulong ft = (ulong)g_links[k].follower;
    if(!PositionSelectByTicket(ft))
+     {
+      if(g_links[k].closeSentMs != 0)
+        {
+         LogLatencyEx(StringFormat("CLOSE #%I64u", ft), g_links[k].master,
+                      g_links[k].closeSentUs, g_links[k].closeNoticeMs);
+         return true;
+        }
       return now - g_links[k].openedMs >= TC_APPEAR_GRACE_MS;   // gone - unless it was opened a moment ago
+     }
+
+   if(g_links[k].closeSentMs != 0)
+     {
+      if(now - g_links[k].closeSentMs < 3000)
+         return false;                       // close in flight, wait for it
+      PrintFormat("TradeCopier: close of #%I64u not confirmed after 3 s - sending again", ft);
+     }
 
    string sym = PositionGetString(POSITION_SYMBOL);
    ulong  t0  = GetMicrosecondCount();
    g_trade.SetTypeFillingBySymbol(sym);
-   if(g_trade.PositionClose(ft) && g_trade.ResultRetcode() == TRADE_RETCODE_DONE)
+   g_trade.SetAsyncMode(true);
+   bool sent = g_trade.PositionClose(ft);
+   g_trade.SetAsyncMode(false);
+   uint rc = g_trade.ResultRetcode();
+   if(sent && (rc == TRADE_RETCODE_PLACED || rc == TRADE_RETCODE_DONE))
      {
-      LogLatency("CLOSE " + sym, g_links[k].master, t0);
-      return true;
+      g_links[k].closeSentMs   = now;
+      g_links[k].closeSentUs   = t0;
+      g_links[k].closeNoticeMs = NoticeMs();
+      return false;                          // confirmed on a later poll
      }
 
+   g_links[k].closeSentMs = 0;
    g_links[k].attempts++;
    g_links[k].retryAtMs = now + Backoff(g_links[k].attempts);
    PrintFormat("TradeCopier: close of #%I64u failed (attempt %d): %u %s",
@@ -517,10 +551,19 @@ double NormalizeLots(const string sym, const double raw)
 
 // "noticed" = master publish -> we saw it (shared Windows clock, ~16 ms resolution)
 // "executed" = our order round trip to the broker (microsecond timer)
+double NoticeMs()
+  {
+   return (g_detectMs >= g_snap.pubMs) ? (double)(g_detectMs - g_snap.pubMs) : 0;
+  }
+
 void LogLatency(const string what, const long masterTicket, const ulong t0)
   {
+   LogLatencyEx(what, masterTicket, t0, NoticeMs());
+  }
+
+void LogLatencyEx(const string what, const long masterTicket, const ulong t0, const double noticeMs)
+  {
    double execMs   = (GetMicrosecondCount() - t0) / 1000.0;
-   double noticeMs = (g_detectMs >= g_snap.pubMs) ? (double)(g_detectMs - g_snap.pubMs) : 0;
    double total    = noticeMs + execMs;
    g_latLast = total;
    g_latSum += total;

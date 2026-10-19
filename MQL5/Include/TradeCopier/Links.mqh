@@ -27,6 +27,9 @@ struct TcLink
    ulong             openedMs;      // when we opened it; the position may take a moment to appear
    double            lastSl;        // last SL/TP we asked for, so a rejected modify isn't spammed
    double            lastTp;
+   ulong             closeSentMs;   // async close in flight since (0 = none)
+   ulong             closeSentUs;   // same moment, microsecond timer, for latency
+   double            closeNoticeMs; // master publish -> we noticed, captured at send
   };
 
 int TcLinkFind(const TcLink &links[], const long master)
@@ -50,6 +53,9 @@ int TcLinkAdd(TcLink &links[], const long master, const double multiplier, const
    links[n].openedMs   = 0;
    links[n].lastSl     = -1;
    links[n].lastTp     = -1;
+   links[n].closeSentMs   = 0;
+   links[n].closeSentUs   = 0;
+   links[n].closeNoticeMs = 0;
    return n;
   }
 
