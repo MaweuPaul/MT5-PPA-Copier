@@ -9,17 +9,46 @@ let lastStates = null;   // login -> state, from the previous poll
 let lastMasterOnline = null;
 let seenUpTo = null;     // newest event key already handled
 
-const enabled = () => "Notification" in window && Notification.permission === "granted";
+const TOAST_MS = 8000;
 
+// "unsupported" (e.g. VS Code's built-in browser) | "default" | "granted" | "denied"
+const permission = () => ("Notification" in window ? Notification.permission : "unsupported");
+
+// In-page toast always; a desktop notification too when the browser allows it.
 function notify(title, body) {
-  if (enabled()) new Notification(title, { body, tag: `${title}:${body}` });
+  toast(title, body);
+  if (permission() === "granted") new Notification(title, { body, tag: `${title}:${body}` });
 }
 
+function toast(title, body) {
+  const box = $("#toasts") ?? document.body.appendChild(Object.assign(document.createElement("div"), { id: "toasts" }));
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.append(Object.assign(document.createElement("strong"), { textContent: title }),
+            Object.assign(document.createElement("div"), { textContent: body }));
+  box.prepend(el);
+  setTimeout(() => el.remove(), TOAST_MS);
+}
+
+const BUTTON = {
+  unsupported: ["In-page alerts", "This browser can't show desktop notifications. Alerts appear inside the dashboard instead. Open it in Chrome or Edge for desktop alerts."],
+  default:     ["Enable desktop alerts", ""],
+  granted:     ["Desktop alerts on", ""],
+  denied:      ["Desktop alerts blocked", "Notifications are blocked for this page. Click the icon left of the address bar → Site settings → Notifications → Allow, then reload. In-page alerts still work."],
+};
+
 function syncButton() {
-  const btn = $("#notifyBtn");
-  if (!("Notification" in window)) return (btn.hidden = true);
-  btn.textContent = enabled() ? "Alerts on" : "Enable alerts";
-  btn.disabled = enabled() || Notification.permission === "denied";
+  const [label, help] = BUTTON[permission()];
+  $("#notifyBtn").textContent = label;
+  $("#notifyBtn").title = help;
+}
+
+async function onButton() {
+  const p = permission();
+  if (p === "default") await Notification.requestPermission();
+  else if (p !== "granted") alert(BUTTON[p][1]);
+  syncButton();
+  notify("Alerts are working", "You'll see copy failures, risk stops and offline accounts here.");
 }
 
 export function checkOverview({ masters, followers }) {
@@ -51,8 +80,5 @@ export function checkEvents(events) {
 
 export function initNotify() {
   syncButton();
-  $("#notifyBtn").addEventListener("click", async () => {
-    await Notification.requestPermission();
-    syncButton();
-  });
+  $("#notifyBtn").addEventListener("click", onButton);
 }

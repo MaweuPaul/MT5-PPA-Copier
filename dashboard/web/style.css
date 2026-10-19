@@ -256,3 +256,8 @@ dialog { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); 
   .sidebar-foot { margin: 0; display: flex; }
   .filters input[type=search] { width: 100%; }
 }
+
+/* in-page alerts */
+#toasts { position: fixed; right: 16px; bottom: 16px; z-index: 20; display: grid; gap: 8px; width: min(360px, calc(100vw - 32px)); }
+.toast { padding: 10px 14px; border: 1px solid var(--border); border-left: 4px solid var(--warn); border-radius: 8px; background: var(--panel); box-shadow: 0 6px 20px rgb(0 0 0 / .3); }
+.toast div { color: var(--muted); font-size: 13px; }
