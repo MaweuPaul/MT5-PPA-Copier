@@ -32,6 +32,8 @@ struct TcSnapshot
    TcPosition        positions[];
   };
 
+// "seq" is written first and "seq_end" last. The file is rewritten in place,
+// so a reader that finds them different caught it half-written and retries.
 string TcSnapshotToJson(const TcSnapshot &s)
   {
    string seq = IntegerToString(s.seq);

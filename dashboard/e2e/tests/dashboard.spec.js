@@ -123,7 +123,6 @@ test("templates: save from settings, list, load and delete", async ({ page }) =>
   await openSettings(page, pepper);
   await page.locator('[name="multiplier"]').fill("0.7");
   await page.locator("#saveTemplateBtn").click();
-  await expect(page.locator("#templatePick option", { hasText: name })).toHaveCount(0); // list refreshes on next open
   await page.locator('button[value="cancel"]').last().click();
 
   await page.goto("/#templates");

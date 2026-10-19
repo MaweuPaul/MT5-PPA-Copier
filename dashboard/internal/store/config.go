@@ -38,7 +38,8 @@ type Config struct {
 	DelayCloses   bool `json:"delay_closes"`
 }
 
-// Limits shared with the EA (CopierFollower.mq5 ApplyConfig) and the UI.
+// Limits shared with the EA (Settings.mqh CTcSettings::Apply) and the UI
+// (index.html input min/max). Change all three together.
 const (
 	MinMultiplier = 0.01
 	MaxMultiplier = 100.0

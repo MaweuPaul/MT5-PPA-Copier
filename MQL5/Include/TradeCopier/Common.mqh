@@ -14,6 +14,9 @@ string TcStatusFile(const long login)      { return TC_ROOT + "\\status\\followe
 string TcConfigFile(const long login)      { return TC_ROOT + "\\config\\follower_" + IntegerToString(login) + ".json"; }
 string TcEventsFile(const long login)      { return TC_ROOT + "\\events\\follower_" + IntegerToString(login) + ".jsonl"; }
 string TcControlFile()                     { return TC_ROOT + "\\control.json"; }
+// Order comment on every copy. If the links file is lost, a follower can still
+// recognise its copies by this (plus its magic number). Some brokers rewrite
+// comments, so the links file stays the primary record.
 string TcCopyComment(const long masterTicket) { return "CP|" + IntegerToString(masterTicket); }
 
 void TcEnsureFolders()
@@ -36,6 +39,7 @@ ulong TcNowMs() { return GetTickCount64(); }
 bool TcReadAll(const string path, string &out)
   {
    out = "";
+   // FILE_SHARE_WRITE: let the writer (another terminal) rewrite the file while we read.
    int h = FileOpen(path, FILE_READ | FILE_BIN | FILE_COMMON | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
       return false;

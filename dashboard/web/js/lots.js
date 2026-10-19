@@ -1,4 +1,4 @@
-// Lot maths mirrored from the EA (CopierFollower NormalizeLots), assuming the
+// Lot maths mirrored from the EA (Lots.mqh TcNormalizeLots), assuming the
 // common 0.01 lot step. Used for the settings preview so a typo like 0.05
 // instead of 0.5 is obvious before saving.
 

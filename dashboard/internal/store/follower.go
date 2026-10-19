@@ -43,6 +43,8 @@ func (s *Store) statusPath(login string) string {
 func (s *Store) Followers() []Follower {
 	out := jsonfile.ReadAll(s.path("status", "follower_*.json"), func(f *Follower, age time.Duration) {
 		f.Liveness = liveness(age)
+		// "stopped" is the last status an EA writes when it's removed; the file
+		// stays behind, so a fresh timestamp alone doesn't mean it's running.
 		f.Online = f.Online && f.State != "stopped"
 	})
 	sort.Slice(out, func(i, j int) bool { return out[i].Login < out[j].Login })

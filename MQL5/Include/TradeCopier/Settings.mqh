@@ -123,6 +123,8 @@ public:
       return true;
      }
 
+   // Field-by-field copy: MQL5 has no usable assignment for objects ("this" is a
+   // pointer). Add new settings here, in SetCopying, Apply and ToJson.
    void              Assign(const CTcSettings &o)
      {
       enabled = o.enabled; roundUpMin = o.roundUpMin; copySLTP = o.copySLTP;
