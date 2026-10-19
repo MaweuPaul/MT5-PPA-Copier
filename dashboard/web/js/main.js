@@ -8,10 +8,12 @@ import { renderTrades } from "./trades.js";
 import { initSettings } from "./settings.js";
 import { initTemplates } from "./templates.js";
 import { initNotify, checkOverview, checkEvents } from "./notify.js";
+import { initAccounts, refreshAccounts } from "./accounts.js";
 
 const OVERVIEW_EVERY_MS = 1000;
 const EVENTS_EVERY_MS = 2000;
 const EVENT_LIMIT = 1000;
+const ACCOUNTS_EVERY_MS = 5000;   // running state comes from the process list, so poll gently
 
 let overview = null;
 
@@ -58,6 +60,7 @@ initRouter();
 initActivity();
 initTemplates();
 initNotify();
+initAccounts({ overview: () => overview });
 initSettings({
   overview: () => overview,
   onSaved: () => {
@@ -70,3 +73,4 @@ refreshOverview();
 refreshEvents();
 setInterval(refreshOverview, OVERVIEW_EVERY_MS);
 setInterval(refreshEvents, EVENTS_EVERY_MS);
+setInterval(refreshAccounts, ACCOUNTS_EVERY_MS);

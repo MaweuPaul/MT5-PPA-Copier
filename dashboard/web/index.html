@@ -11,6 +11,7 @@
     <div class="brand"><span class="logo" aria-hidden="true">⇉</span><h1>Trade Copier</h1></div>
     <nav>
       <a href="#overview" data-nav="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Overview</a>
+      <a href="#accounts" data-nav="accounts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M19 8v6M16 11h6"/></svg>Accounts</a>
       <a href="#trades" data-nav="trades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>Copied trades</a>
       <a href="#activity" data-nav="activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Activity</a>
       <a href="#templates" data-nav="templates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Templates</a>
@@ -51,6 +52,33 @@
         <div class="card">
           <div class="card-head"><h3>Your main account</h3><span class="sub">Trades you place here are copied to the accounts above</span></div>
           <div id="masters"><p class="empty">Main account not found. Attach CopierMaster to a chart in the master MT5.</p></div>
+        </div>
+      </section>
+
+      <!-- Accounts -->
+      <section data-page="accounts" class="page" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h3>Your accounts</h3>
+            <button id="addAccountBtn" class="btn btn-primary" type="button">+ Add account</button>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Account</th><th>Role</th><th>MT5</th><th>Folder</th><th></th></tr></thead>
+              <tbody id="accountsList"><tr><td colspan="5" class="empty">No accounts yet. Click “+ Add account”.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Setup</h3><span class="sub">Only needed once</span></div>
+          <form id="setupForm" class="setup">
+            <label>MT5 installed in <small>any MT5 on this PC; new accounts are copied from it</small><input type="text" name="mt5_source" required spellcheck="false"></label>
+            <label>Keep account folders in <small>one folder per account is created here</small><input type="text" name="terminals_dir" required spellcheck="false"></label>
+            <label class="check"><input type="checkbox" name="autostart"> Start with Windows (opens every account&#39;s MT5 and this dashboard after a restart)</label>
+            <p id="setupMsg" class="note" role="status"></p>
+            <button class="btn" type="submit">Save setup</button>
+          </form>
         </div>
       </section>
 
@@ -183,6 +211,44 @@
         <span class="spacer"></span>
         <button class="btn" value="cancel" formnovalidate>Cancel</button>
         <button id="saveBtn" class="btn btn-primary" type="submit" value="save">Save settings</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="addAccount" aria-labelledby="addTitle">
+    <form id="addForm" method="dialog">
+      <div class="dialog-head">
+        <h2 id="addTitle">Add an account</h2>
+        <button class="icon-btn" value="cancel" aria-label="Close" formnovalidate>✕</button>
+      </div>
+      <fieldset>
+        <legend>What is this account?</legend>
+        <label class="check"><input type="radio" name="role" value="follower" checked> Copy trades <strong>to</strong> this account</label>
+        <label class="check"><input type="radio" name="role" value="master"> This is my <strong>main</strong> account (I trade here)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Login details</legend>
+        <p class="note">The same details you use to log in to MT5. The password goes straight to MT5, which saves it on this PC. The dashboard never stores it.</p>
+        <div class="row">
+          <label>Account number<input type="text" name="login" inputmode="numeric" pattern="[0-9]+" required autocomplete="off"></label>
+          <label>Password<input type="password" name="password" required autocomplete="new-password"></label>
+        </div>
+        <label>Server <small>exactly as your broker gives it, e.g. Pepperstone-Demo</small><input type="text" name="server" required spellcheck="false"></label>
+      </fieldset>
+      <fieldset class="follower-only">
+        <legend>Copying</legend>
+        <div class="row">
+          <label>Main account number<input type="text" name="master_id" inputmode="numeric" pattern="[0-9]+"></label>
+          <label>Lot size <small>× main account</small><input type="number" name="multiplier" min="0.01" max="100" step="0.01" value="1"></label>
+          <label>Symbol ending <small>optional, e.g. m</small><input type="text" name="symbol_suffix" maxlength="16" spellcheck="false"></label>
+        </div>
+      </fieldset>
+      <ol id="addSteps" class="steps" hidden></ol>
+      <p id="addError" class="error" role="alert" hidden></p>
+      <div class="dialog-foot">
+        <span class="spacer"></span>
+        <button class="btn" value="cancel" formnovalidate>Close</button>
+        <button id="addSubmit" class="btn btn-primary" type="submit" value="add">Add account</button>
       </div>
     </form>
   </dialog>

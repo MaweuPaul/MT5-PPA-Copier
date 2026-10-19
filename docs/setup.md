@@ -1,5 +1,26 @@
 # Setup
 
+## Quick setup (recommended)
+
+You need MT5 installed once, from any broker, and Go 1.22+.
+
+1. Build and start the dashboard:
+   ```powershell
+   cd dashboard
+   $env:GOARCH = "amd64"; go build -o tradecopier-dashboard.exe .
+   .\tradecopier-dashboard.exe
+   ```
+2. Open **Accounts → Setup**. Check the MT5 install folder and the folder for account installs, tick **Start with Windows**, and click **Save setup**.
+3. Click **+ Add account** for your **main** account, then for each account to copy to. Enter the login, password, server and lot size.
+
+For each account, the dashboard creates its own MT5, installs the copier EA, logs in, turns on Algo Trading and starts it. Nothing needs doing inside MT5.
+
+- **First account only:** it takes about a minute, because MT5 has to start once before the EAs can be compiled.
+- **The password** goes into a one-time MT5 start-up file that is deleted within 20 seconds. After that, MT5 keeps the login (encrypted) as it normally does. The dashboard never stores it.
+- **Each account** has **Start / Stop / Remove** buttons. Remove keeps the folder on disk.
+
+The manual steps below do the same thing by hand.
+
 ## 1. One MT5 install per account
 
 MetaTrader allows one logged-in account per terminal, so each account gets its own **portable** install. Keep these installs outside the repo: they're large and contain saved logins.

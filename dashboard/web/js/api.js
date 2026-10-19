@@ -30,3 +30,16 @@ export const getTemplates = () => request("/api/templates");
 export const saveTemplate = (name, config) => request(templatePath(name), { method: "PUT", body: config });
 
 export const deleteTemplate = (name) => request(templatePath(name), { method: "DELETE" });
+
+export const getAccounts = () => request("/api/accounts");
+
+export const addAccount = (form) => request("/api/accounts", { method: "POST", body: form });
+
+export const getAddJob = (id) => request(`/api/accounts/jobs/${encodeURIComponent(id)}`);
+
+export const accountAction = (login, action) =>
+  action === "remove"
+    ? request(`/api/accounts/${encodeURIComponent(login)}`, { method: "DELETE" })
+    : request(`/api/accounts/${encodeURIComponent(login)}/${action}`, { method: "POST" });
+
+export const saveSetup = (setup) => request("/api/setup", { method: "PUT", body: setup });

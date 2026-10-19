@@ -45,3 +45,11 @@ foreach ($t in $Terminals) {
 }
 
 if ($failed) { exit 1 }
+
+# Keep the dashboard's build cache current: "Add account" installs these .ex5 files.
+$build = Join-Path $env:APPDATA "MetaQuotes\Terminal\Common\Files\TradeCopier\build"
+$first = Join-Path $Mt5Root "$($Terminals[0])\MQL5\Experts\TradeCopier"
+if (-not $failed -and (Test-Path "$first\CopierFollower.ex5")) {
+    New-Item -ItemType Directory -Force $build | Out-Null
+    Copy-Item "$first\*.ex5" $build -Force
+}

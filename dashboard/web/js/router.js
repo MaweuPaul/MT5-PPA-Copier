@@ -1,7 +1,7 @@
-// Hash router: #overview, #trades, #activity, #templates.
+// Hash router: #overview, #accounts, #trades, #activity, #templates.
 import { $ } from "./dom.js";
 
-const PAGES = { overview: "Overview", trades: "Copied trades", activity: "Activity", templates: "Templates" };
+const PAGES = { overview: "Overview", accounts: "Accounts", trades: "Copied trades", activity: "Activity", templates: "Templates" };
 
 export const currentPage = () => (location.hash.slice(1) in PAGES ? location.hash.slice(1) : "overview");
 
