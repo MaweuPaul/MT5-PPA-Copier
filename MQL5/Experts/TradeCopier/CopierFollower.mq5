@@ -16,28 +16,29 @@
 #include <TradeCopier\SymbolMap.mqh>
 #include <TradeCopier\Links.mqh>
 
+// The comment after each input is the label MT5 shows in the Inputs tab.
 input group "Master"
-input string MasterId            = "";      // Master account login number
-input int    MasterStaleMs       = 5000;    // Master silent this long = stale (copies are kept, nothing closes)
+input string MasterId            = "";      // Master ID (master account login number)
+input int    MasterStaleMs       = 5000;    // Master stale after (ms) - copies are kept, nothing closes
 
 input group "Sizing"
-input double LotMultiplier       = 1.0;     // Follower lots = master lots x this (0.01 - 100)
-input double MaxLotPerTrade      = 0;       // Cap per copy, 0 = broker maximum only
-input bool   RoundUpToMinLot     = true;    // Below broker minimum: true = use minimum, false = skip
+input double LotMultiplier       = 1.0;     // Lot multiplier (follower lots = master lots x this)
+input double MaxLotPerTrade      = 0;       // Max lot per trade (0 = broker maximum)
+input bool   RoundUpToMinLot     = true;    // Round up to minimum lot (false = skip small copies)
 
 input group "Symbols"
-input string SymbolSuffix        = "";      // Added to master symbol, e.g. "m" for Exness (EURUSD -> EURUSDm)
-input string SymbolPrefix        = "";      // Added in front of master symbol
-input string StripMasterSuffix   = "";      // Removed from master symbol first, e.g. ".r"
-input string SymbolMap           = "";      // Explicit names, e.g. "XAUUSD=GOLD;US30=DJ30"
+input string SymbolSuffix        = "";      // Symbol suffix (e.g. "m" for Exness: EURUSD -> EURUSDm)
+input string SymbolPrefix        = "";      // Symbol prefix
+input string StripMasterSuffix   = "";      // Remove from master symbol (e.g. ".r")
+input string SymbolMap           = "";      // Symbol map (e.g. XAUUSD=GOLD;US30=DJ30)
 
 input group "Execution"
-input bool   CopySLTP            = true;    // Keep SL/TP the same as the master
-input int    MaxSlippagePoints   = 30;      // Max deviation for market orders
-input int    MaxOpenAttempts     = 5;       // Give up on a copy after this many failed opens
-input bool   CopyExistingOnStart = false;   // Copy master trades that were already open when this EA started
-input int    PollIntervalMs      = 1;       // How often to check the master file
-input long   MagicNumber         = 20261019;
+input bool   CopySLTP            = true;    // Copy SL/TP
+input int    MaxSlippagePoints   = 30;      // Max slippage (points)
+input int    MaxOpenAttempts     = 5;       // Max open attempts
+input bool   CopyExistingOnStart = false;   // Copy trades already open at start
+input int    PollIntervalMs      = 1;       // Poll interval (ms)
+input long   MagicNumber         = 20261019; // Magic number
 
 #define TC_APPEAR_GRACE_MS 5000              // a just-opened position can take a moment to show up
 
@@ -53,6 +54,7 @@ long   g_lastSeq      = 0;
 ulong  g_detectMs     = 0;       // when we noticed the current snapshot
 ulong  g_lastReconMs  = 0;
 ulong  g_lastStatusMs = 0;
+ulong  g_readFailSinceMs = 0;
 string g_state        = "";
 string g_masterFile   = "";
 string g_linksFile    = "";
@@ -82,6 +84,7 @@ int OnInit()
    g_lastSeq = 0;
    g_lastReconMs = 0;
    g_lastStatusMs = 0;
+   g_readFailSinceMs = 0;
    g_state = "";
    g_latLast = 0;
    g_latSum = 0;
@@ -132,13 +135,19 @@ void Step()
       return;
      }
 
+   // A failed read is usually the master rewriting the file right now, so
+   // only report "no_master" once reads have kept failing for a while.
    string text;
    if(!TcReadAll(g_masterFile, text) || text == "")
      {
-      SetState("no_master");
+      if(g_readFailSinceMs == 0)
+         g_readFailSinceMs = now;
+      else if(now - g_readFailSinceMs >= 2000)
+         SetState("no_master");
       WriteStatusIfDue(now);
       return;
      }
+   g_readFailSinceMs = 0;
 
    // Full parse only when the master wrote something new, plus a periodic
    // pass so retries and backoffs still run while the master is quiet.

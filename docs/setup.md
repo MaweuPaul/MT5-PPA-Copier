@@ -22,7 +22,7 @@ The account must use **hedging** mode. Netting isn't supported yet.
 From the repo root:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
+powershell -ExecutionPolicy Bypass -Command "& .\scripts\deploy.ps1"
 # options: -Mt5Root D:\MT5 -Terminals Master,Follower1,Follower2
 ```
 
