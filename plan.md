@@ -109,6 +109,13 @@ The copy path stays EA → shared files → EA. The dashboard is a **control pla
 
 **Frontend:** plain HTML + CSS, plus about 100 lines of vanilla JS that poll `/api/accounts` every second. No frameworks, no build step.
 
+**Follower settings from the dashboard** (lot multiplier, symbol map, limits, enabled on/off):
+- Followers are **discovered automatically**: each follower EA writes `status_<account>.json`, and the dashboard lists every account it finds.
+- Saving in the UI writes `config/<account>.json` (temp file + rename). The follower checks the file's modified time about every 500 ms and reloads when it changes. **No terminal restart needed.**
+- The EA's own inputs are only defaults, used when no config file exists yet.
+- **A multiplier change applies to new trades only.** Each copied position stores the multiplier it was opened with in the mapping file, so changing 1.0 → 0.5 never resizes trades that are already open. Partial closes keep the same ratio.
+- Validation in Go and again in the EA: multiplier between 0.01 and 100, max lot > 0. Invalid configs are rejected, and the follower keeps its last good config.
+
 **Followers write a status file** (`status_<account>.json`, about once a second) with balance, equity, daily P&L, copy state and latency, so the dashboard can show it.
 
 ## Credentials & config (no database)
