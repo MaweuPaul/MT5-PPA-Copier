@@ -26,7 +26,9 @@ powershell -ExecutionPolicy Bypass -Command "& .\scripts\deploy.ps1"
 # options: -Mt5Root D:\MT5 -Terminals Master,Follower1,Follower2
 ```
 
-The script copies `MQL5\` into every terminal and compiles it. Each line should say `OK`. In each terminal, open **Navigator → Expert Advisors** and right-click → **Refresh** to see `TradeCopier`.
+The script copies `MQL5\` into every terminal and compiles it. Each line should say `OK`.
+
+**After redeploying, restart the follower terminals** (or remove and re-attach the EA). The follower runs a continuous polling loop, so MT5 doesn't swap in the new build by itself. A restart reloads the chart with the EA and keeps its settings. In each terminal, open **Navigator → Expert Advisors** and right-click → **Refresh** to see `TradeCopier`.
 
 ## 3. Attach the master EA
 

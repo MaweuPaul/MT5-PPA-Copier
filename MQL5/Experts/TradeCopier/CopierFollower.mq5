@@ -177,29 +177,34 @@ bool EnsureAccount()
    if(g_login != 0)
       return g_ready;
 
+   // Right after a terminal starts, the login can be known before the account
+   // details (margin mode etc.) have arrived. Wait until it's connected, and
+   // never latch a failed check - just re-check on the next poll.
    long login = AccountInfoInteger(ACCOUNT_LOGIN);
-   if(login == 0)
+   if(login == 0 || !TerminalInfoInteger(TERMINAL_CONNECTED) || AccountInfoString(ACCOUNT_SERVER) == "")
      {
       SetState("not_logged_in");
       return false;
      }
-   g_login      = login;
    g_linksFile  = TcLinksFile(login);
    g_statusFile = TcStatusFile(login);
 
    if(IntegerToString(login) == MasterId)
      {
+      if(g_state != "is_master")
+         Alert("TradeCopier: MasterId is this account's own login. Use CopierMaster here instead.");
       SetState("is_master");
-      Alert("TradeCopier: MasterId is this account's own login. Use CopierMaster here instead.");
       return false;
      }
    if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
      {
+      if(g_state != "netting_unsupported")
+         Alert("TradeCopier: this account uses netting mode; only hedging accounts are supported for now.");
       SetState("netting_unsupported");
-      Alert("TradeCopier: this account uses netting mode; only hedging accounts are supported for now.");
       return false;
      }
 
+   g_login = login;
    TcLinksLoad(g_links, g_linksFile);
    PrintFormat("TradeCopier: follower %I64d following master %s, x%s, %d saved link(s)",
                login, MasterId, TcNum(LotMultiplier, 4), ArraySize(g_links));
@@ -554,7 +559,7 @@ void WriteStatusIfDue(const ulong now)
    if(g_statusFile == "")
       return;
 
-   string j = "{\"login\":" + IntegerToString(g_login)
+   string j = "{\"login\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN))
               + ",\"server\":" + TcJsonStr(AccountInfoString(ACCOUNT_SERVER))
               + ",\"master_id\":" + TcJsonStr(MasterId)
               + ",\"state\":" + TcJsonStr(g_state)
