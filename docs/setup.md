@@ -58,10 +58,35 @@ The chart then shows `TradeCopier FOLLOWER x<multiplier> | master <id> | copying
 4. Partially close the master, e.g. 0.10 → 0.05. The followers should shrink by the same ratio.
 5. Close the master. The followers should close.
 
+## 6. Dashboard
+
+Build and run it from the repo root (needs Go 1.22+):
+
+```powershell
+cd dashboard
+go build -o tradecopier-dashboard.exe .
+.\tradecopier-dashboard.exe          # opens http://127.0.0.1:8750
+```
+
+Options:
+- `-addr 127.0.0.1:8750`: listen address. Loopback only, so anything else is refused.
+- `-open=false`: don't open the browser.
+- `-root <path>`: a different TradeCopier folder.
+
+**What the dashboard shows and does:**
+- **Master:** online state, balance, equity and open positions.
+- **Followers:** state, multiplier, open copies, balance and equity, and latency (last / average / max).
+- **Settings:** lot multiplier with a live preview ("master 0.20 → 0.10 here"), max lot, suffix, prefix, symbol map and copy SL/TP. Changes apply within about a second, with no restart.
+- **Pause all copying:** stops new copies. Closes and SL/TP changes are still mirrored.
+- **Activity:** copies, skips, errors and setting changes, filterable by account.
+
+**Closing the dashboard doesn't affect copying.**
+
 ## Behaviour to know
 
 - **Trades already open when a follower starts are not copied,** unless `CopyExistingOnStart = true`, because copying them late would be at a worse price.
 - **If a copy is closed on the follower** (its own SL hit, or closed by hand), it won't be reopened.
 - **If the master stops publishing** (EA removed or terminal closed), followers show `master_stale` and **keep their copies open**. Nothing is closed automatically.
 - **Changing a follower's multiplier** only affects new trades. Open copies keep the multiplier they were opened with.
+- **Settings saved in the dashboard override the EA inputs** for sizing, symbols and SL/TP. To go back to the inputs, delete that follower's `config\follower_<login>.json`.
 - **Files** live in `%APPDATA%\MetaQuotes\Terminal\Common\Files\TradeCopier\`. See [snapshot-format.md](snapshot-format.md).

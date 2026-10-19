@@ -1,12 +1,15 @@
 # Snapshot & file formats (v1)
 
-Every TradeCopier component (MQL5 EAs now; MQL4, cTrader and the Go dashboard later) talks through plain files in the MetaTrader **Common Files** folder:
+Every TradeCopier component (the MQL5 EAs and the Go dashboard now; MQL4 and cTrader later) talks through plain files in the MetaTrader **Common Files** folder:
 
 ```
 %APPDATA%\MetaQuotes\Terminal\Common\Files\TradeCopier\
-├── master_<login>.json          # written by the master EA
-├── status\follower_<login>.json # written by each follower EA, about once a second
-└── state\links_<login>.csv      # follower's own record of which trades it has copied
+├── master_<login>.json            # master EA: open positions (+ heartbeat)
+├── control.json                   # dashboard: {"paused": true|false} for every follower
+├── status\follower_<login>.json   # follower EA: state, balance, latency, live settings (~1/s)
+├── config\follower_<login>.json   # dashboard: that follower's settings, re-read live by the EA
+├── events\follower_<login>.jsonl  # follower EA: activity log, one JSON object per line
+└── state\links_<login>.csv        # follower EA: which trades it has copied
 ```
 
 All files are UTF-8 text. Times named `*_ms` are **Windows uptime in milliseconds** (`GetTickCount64`). This is one clock shared by every program on the PC, so values from different terminals can be compared directly. Resolution is about 10–16 ms.
@@ -83,3 +86,41 @@ master,follower,multiplier,state
 - `3`: skipped, either because the master trade already existed when the follower started or because it failed too often
 
 `multiplier` is the one used when the copy was opened, so a later settings change never resizes an open copy.
+
+## Follower settings: `config/follower_<login>.json`
+
+Written by the dashboard through a temp file and a rename. The follower checks it about every 500 ms and applies changes without a restart.
+
+```json
+{"enabled":true,"multiplier":0.5,"max_lot":0,"round_up_min":true,"copy_sltp":true,
+ "symbol_suffix":"m","symbol_prefix":"","strip_suffix":"","symbol_map":"XAUUSD=GOLD"}
+```
+
+- **Missing keys** keep the follower's current value. Until a file exists, the EA's inputs apply.
+- **Invalid values** (multiplier outside 0.01–100, or max lot < 0) reject the whole file, and the follower keeps its last good settings.
+- **The status file** carries the follower's live settings in the same shape, under `"settings"`.
+
+## Global pause: `control.json`
+
+```json
+{"paused":true}
+```
+
+While paused, followers **don't open new copies**. A master trade opened during the pause is skipped for good rather than copied late. Closes, partial closes and SL/TP changes are **still mirrored**, so nothing is left unmanaged. A follower with `"enabled": false` behaves the same way.
+
+## Activity log: `events/follower_<login>.jsonl`
+
+```json
+{"time":"2026.10.19 19:00:11","ms":3525671,"login":61619054,"kind":"copy","master":363671277,"msg":"OPEN SELL 0.1 EURUSD | noticed 0 ms after master, executed in 385.9 ms","latency_ms":385.9}
+```
+
+`kind` is one of:
+- `copy`: open, close, partial close or SL/TP done
+- `skip`: not copied, and why
+- `error`
+- `info`
+- `config`: settings or pause changed
+- `state`: follower state changed
+- `start`
+
+Past 2 MB the file is rotated to `.jsonl.1`.

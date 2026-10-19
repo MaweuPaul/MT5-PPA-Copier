@@ -11,6 +11,9 @@
 string TcMasterFile(const string masterId) { return TC_ROOT + "\\master_" + masterId + ".json"; }
 string TcLinksFile(const long login)       { return TC_ROOT + "\\state\\links_" + IntegerToString(login) + ".csv"; }
 string TcStatusFile(const long login)      { return TC_ROOT + "\\status\\follower_" + IntegerToString(login) + ".json"; }
+string TcConfigFile(const long login)      { return TC_ROOT + "\\config\\follower_" + IntegerToString(login) + ".json"; }
+string TcEventsFile(const long login)      { return TC_ROOT + "\\events\\follower_" + IntegerToString(login) + ".jsonl"; }
+string TcControlFile()                     { return TC_ROOT + "\\control.json"; }
 string TcCopyComment(const long masterTicket) { return "CP|" + IntegerToString(masterTicket); }
 
 void TcEnsureFolders()
@@ -18,6 +21,8 @@ void TcEnsureFolders()
    FolderCreate(TC_ROOT, FILE_COMMON);
    FolderCreate(TC_ROOT + "\\state", FILE_COMMON);
    FolderCreate(TC_ROOT + "\\status", FILE_COMMON);
+   FolderCreate(TC_ROOT + "\\config", FILE_COMMON);
+   FolderCreate(TC_ROOT + "\\events", FILE_COMMON);
   }
 
 // Milliseconds since Windows started. Every terminal on this PC shares
@@ -54,6 +59,32 @@ bool TcWriteAll(const string path, const string text)
    int n = StringToCharArray(text, buf, 0, WHOLE_ARRAY, CP_UTF8);
    if(n > 0 && buf[n - 1] == 0)
       n--;                                   // drop the string terminator
+   uint written = (n > 0) ? FileWriteArray(h, buf, 0, n) : 0;
+   FileClose(h);
+   return (int)written == n;
+  }
+
+// Appends one line (e.g. a JSON event). Past 2 MB the file is rotated to
+// <path>.1 so the log can't grow without limit.
+bool TcAppendLine(const string path, const string line)
+  {
+   int flags = FILE_READ | FILE_WRITE | FILE_BIN | FILE_COMMON | FILE_SHARE_READ;
+   int h = FileOpen(path, flags);
+   if(h == INVALID_HANDLE)
+      return false;
+   if(FileSize(h) > 2 * 1024 * 1024)
+     {
+      FileClose(h);
+      FileMove(path, FILE_COMMON, path + ".1", FILE_COMMON | FILE_REWRITE);
+      h = FileOpen(path, flags);
+      if(h == INVALID_HANDLE)
+         return false;
+     }
+   FileSeek(h, 0, SEEK_END);
+   uchar buf[];
+   int n = StringToCharArray(line + "\n", buf, 0, WHOLE_ARRAY, CP_UTF8);
+   if(n > 0 && buf[n - 1] == 0)
+      n--;
    uint written = (n > 0) ? FileWriteArray(h, buf, 0, n) : 0;
    FileClose(h);
    return (int)written == n;
