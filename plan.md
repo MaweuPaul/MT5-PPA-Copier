@@ -16,8 +16,8 @@ Place a trade on one **master** MT5/MT4 account and have it copied to all **foll
 ```
  Terminal A (Master)                 Common\Files\TradeCopier\           Terminals B, C, D… (Followers)
  ┌──────────────────┐   writes       ┌──────────────────────┐   reads   ┌──────────────────────┐
- │ CopierMaster EA  │ ─────────────▶ │ master_<id>.json     │ ◀──────── │ CopierSlave EA       │
- │ (snapshot of all │  every ~100ms  │ (positions + orders) │           │ diff → open/modify/  │
+ │ CopierMaster EA  │ ─────────────▶ │ master_<id>.json     │ ◀──────── │ CopierFollower EA    │
+ │ (snapshot of all │  on each trade │ (open positions)     │           │ diff → open/modify/  │
  │  positions)      │                └──────────────────────┘           │ close to match       │
  └──────────────────┘                                                   └──────────────────────┘
 ```
@@ -59,7 +59,7 @@ Rules:
 - Sends a heartbeat every second, even when nothing has changed.
 - **The format is platform-neutral** so cTrader (and MT4) can use it later. It's plain JSON. Volume is in **lots** (cTrader converts lots to units itself), symbols use the master's raw name (each follower maps them), and times are UTC.
 
-### 2. `CopierSlave.mq5`
+### 2. `CopierFollower.mq5`
 Inputs:
 - `MasterId`
 - `LotMultiplier`
@@ -73,7 +73,7 @@ Inputs:
 
 Main loop (a tight `Sleep(1)` loop, not a slow timer):
 1. Read the small `seq` file. Only if it changed, read and parse the snapshot. If the heartbeat is older than N seconds, raise an alert and **do not close anything**.
-2. Map master ticket → follower position using the comment `CP|<master_ticket>` plus a local mapping file as a backup, because some brokers rewrite comments.
+2. Map master ticket → follower position using a links file (`state/links_<login>.csv`). The comment `CP|<master_ticket>` is a backup for recovery, because some brokers rewrite comments.
 3. For each master position:
    - If it is missing on the follower → open it at `volume × multiplier`, normalized to the symbol's min, max and step.
    - If SL/TP differ → modify.
@@ -147,13 +147,15 @@ The copy path stays EA → shared files → EA. The dashboard is a **control pla
 tradecopier/
 ├── plan.md
 ├── MQL5/
-│   ├── Experts/CopierMaster.mq5
-│   ├── Experts/CopierSlave.mq5
-│   └── Include/Copier/
-│       ├── Snapshot.mqh      # serialize / parse snapshot (simple JSON or CSV)
-│       ├── SymbolMap.mqh
-│       ├── LotCalc.mqh
-│       └── RiskGuard.mqh
+│   ├── Experts/TradeCopier/
+│   │   ├── CopierMaster.mq5
+│   │   └── CopierFollower.mq5
+│   └── Include/TradeCopier/
+│       ├── Common.mqh        # paths, file I/O, minimal JSON helpers
+│       ├── Snapshot.mqh      # serialize / parse the master snapshot
+│       ├── SymbolMap.mqh     # master symbol -> follower symbol
+│       └── Links.mqh         # master ticket -> follower ticket, persisted
+├── scripts/deploy.ps1         # copy MQL5 into each terminal and compile
 ├── MQL4/                      # later port, same snapshot format
 ├── dashboard/                 # Go control-plane server
 │   ├── go.mod
