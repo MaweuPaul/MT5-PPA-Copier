@@ -81,7 +81,7 @@ Hosted copy-trading services solve the repetition, but:
 You need: **Windows**, **MT5** installed once (from any broker), and **Go 1.22+**.
 
 ```powershell
-git clone https://github.com/MaweuPaul/trade-copier.git
+git clone https://github.com/MaweuPaul/MT5-PPA-Copier.git
 cd trade-copier\dashboard
 $env:GOARCH = "amd64"; go build -o tradecopier-dashboard.exe .
 .\tradecopier-dashboard.exe          # opens http://127.0.0.1:8750
