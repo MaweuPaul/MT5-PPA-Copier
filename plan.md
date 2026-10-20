@@ -144,39 +144,24 @@ The copy path stays EA → shared files → EA. The dashboard is a **control pla
 
 ## Project layout
 ```
-tradecopier/
-├── plan.md
-├── MQL5/
-│   ├── Experts/TradeCopier/
-│   │   ├── CopierMaster.mq5
-│   │   └── CopierFollower.mq5
-│   └── Include/TradeCopier/
-│       ├── Common.mqh        # paths, file I/O, minimal JSON helpers
-│       ├── Snapshot.mqh      # serialize / parse the master snapshot
-│       ├── SymbolMap.mqh     # master symbol -> follower symbol
-│       └── Links.mqh         # master ticket -> follower ticket, persisted
-├── scripts/deploy.ps1         # copy MQL5 into each terminal and compile
-├── MQL4/                      # later port, same snapshot format
-├── dashboard/                 # Go control-plane server
-│   ├── go.mod
-│   ├── main.go                # HTTP server, 127.0.0.1 only
-│   ├── internal/
-│   │   ├── files/             # find Common\Files, read snapshot/status, atomic writes
-│   │   └── api/               # JSON handlers
-│   └── web/                   # embedded static files
-│       ├── index.html
-│       ├── style.css
-│       └── app.js
-├── docs/snapshot-format.md    # the shared JSON format (used by MQL5, MQL4, cTrader, Go)
-└── docs/setup.md              # how to install terminals and attach the EAs
+MQL5/Experts/TradeCopier/   CopierMaster.mq5, CopierFollower.mq5
+MQL5/Include/TradeCopier/   Common, Snapshot, SymbolMap, Links, Lots, Settings, Risk, EventLog, Latency
+dashboard/                  Go server (api, store, terminals, jsonfile) + web/ UI + e2e/ Playwright tests
+scripts/deploy.ps1          compile the EAs into every added account
+docs/                       setup.md, snapshot-format.md
 ```
 
 ## Phases
-1. **MVP (MT5):** master snapshot, follower open/close market positions, multiplier, symbol suffix. Tested on 1 master + 2 demo followers.
-2. **Robustness:** SL/TP sync, partial closes, mapping-file recovery, heartbeat, retries, logging.
-2b. **Dashboard:** Go server + HTML/CSS. Shows account status and latency, edits follower settings, and has the kill switch.
-3. **Risk features:** daily loss guard, max lot, trading-hours filter, equity-based kill switch.
-4. **Extras:** pending orders, MT4 port, on-chart panel, Telegram/Push alerts.
+| Phase | Scope | Status |
+|---|---|---|
+| 1. MVP (MT5) | Master snapshot; follower opens and closes, lot multiplier, symbol suffix | ✅ Done, tested FxPro → Pepperstone + Exness demos |
+| 2. Robustness | SL/TP sync, partial closes, links file + comment recovery, heartbeat, retries, async close-all | ✅ Done |
+| 2b. Dashboard | Go + HTML/CSS/JS: status, live settings, pause, activity log, alerts, templates | ✅ Done |
+| 2c. Easy setup | Dashboard creates each account's MT5, installs the EA, logs in; Launch all; Start with Windows | ✅ Done |
+| 3. Risk | Daily loss limit, equity floor, max lot/trades/total lots, trading hours, news pause, copy delay + random extra | ✅ Done |
+| 4. Extras | Pending orders, MT4 port, Telegram alerts, lot modes (fixed / balance ratio / risk %), several masters | Planned |
+
+The phases below keep their original notes:
 5. **cTrader support:** a cBot (C#, cTrader Automate) that runs inside the cTrader desktop app and reads and writes the same snapshot files. Any platform can then be master or follower (MT5 → cTrader, cTrader → MT5, etc.). Because the cBot runs inside a logged-in cTrader app, there are still no credentials and no Open API/OAuth tokens. The cBot needs `AccessRights.FullAccess` to reach the shared folder.
 6. **Later, if needed:** remote followers on another PC or VPS (replace the file transport with a small TCP/WebSocket relay).
 
@@ -190,8 +175,8 @@ tradecopier/
   - Lot result below the minimum.
 - Measure latency at every stage (see Latency design). Aim for under 5 ms from master fill to follower order sent, then compare home PC vs. VPS for total time to fill.
 
-## Open questions
-- How many follower accounts, and are they at the same broker/firm or several?
-- Is the master itself a prop account, or a personal or demo account?
-- Do you trade pending orders, or only market orders?
-- Will this run on your PC or a VPS?
+## Decided along the way
+- **Accounts:** several followers at different brokers. In testing, FxPro is the master and Pepperstone and Exness are followers.
+- **Hosting:** local PC first. A Windows VPS near the brokers is the recommended upgrade for lower latency.
+- **Orders:** market orders only for now. Pending orders are phase 4.
+- **Dashboard:** Go standard library only, vanilla JS modules, an always-light full-width UI in plain language.
