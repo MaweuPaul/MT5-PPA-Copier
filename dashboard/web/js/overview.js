@@ -55,7 +55,8 @@ function renderHealth(master, followers, paused) {
     text = `${copying} of ${followers.length} account${followers.length === 1 ? " is" : "s are"} copying your trades.`;
   }
   $("#health").className = `health ${tone === "good" ? "" : tone}`;
-  $("#health").innerHTML = `<div class="health-icon">${icon}</div><div><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`;
+  const fix = tone === "bad" ? `<button class="btn btn-good" type="button" data-launch-all>▶ Launch all accounts</button>` : "";
+  $("#health").innerHTML = `<div class="health-icon">${icon}</div><div><h3>${esc(title)}</h3><p>${esc(text)}</p></div>${fix}`;
 }
 
 function renderStats(followers) {
@@ -129,6 +130,9 @@ function followerCard(f) {
     </div>
     ${riskMeter(f)}
     ${why ? `<p class="account-note">${esc(why)}</p>` : ""}
-    <button class="btn btn-small" type="button" data-settings="${esc(f.login)}">⚙ Settings</button>
+    <div class="actions" style="justify-content:flex-start">
+      ${f.online ? "" : `<button class="btn btn-small btn-good" type="button" data-account-action="start" data-login="${esc(f.login)}">▶ Start MT5</button>`}
+      <button class="btn btn-small" type="button" data-settings="${esc(f.login)}">⚙ Settings</button>
+    </div>
   </article>`;
 }

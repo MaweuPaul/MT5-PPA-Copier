@@ -116,20 +116,23 @@ async function onAction(btn) {
   refreshAccounts();
 }
 
+// Launch-all buttons (Accounts page and the Overview banner).
+async function launchAll(btn) {
+  const label = btn.textContent;
+  btn.disabled = true;
+  try {
+    const { started } = await startAllAccounts();
+    btn.textContent = started ? `Starting ${started} account${started > 1 ? "s" : ""}…` : "All accounts already running";
+  } catch (err) {
+    alert(err.message);
+  }
+  setTimeout(() => { btn.textContent = label; btn.disabled = false; refreshAccounts(); }, 4000);
+}
+
 export function initAccounts({ overview }) {
   getOverview = overview;
   $("#addAccountBtn").addEventListener("click", openAdd);
-  $("#startAllBtn").addEventListener("click", async (ev) => {
-    const btn = ev.currentTarget;
-    btn.disabled = true;
-    try {
-      const { started } = await startAllAccounts();
-      btn.textContent = started ? `Starting ${started} account${started > 1 ? "s" : ""}…` : "All accounts already running";
-    } catch (err) {
-      alert(err.message);
-    }
-    setTimeout(() => { btn.textContent = "▶ Launch all accounts"; btn.disabled = false; refreshAccounts(); }, 4000);
-  });
+  $("#startAllBtn").addEventListener("click", (ev) => launchAll(ev.currentTarget));
   form.addEventListener("change", (ev) => ["role", "source"].includes(ev.target.name) && syncForm());
   form.addEventListener("submit", (ev) => {
     if (ev.submitter?.value !== "add") return;   // Close / ✕
@@ -139,6 +142,7 @@ export function initAccounts({ overview }) {
   document.addEventListener("click", (ev) => {
     const btn = ev.target.closest("[data-account-action]");
     if (btn) onAction(btn);
+    if (ev.target.closest("[data-launch-all]")) launchAll(ev.target.closest("[data-launch-all]"));
   });
   $("#setupForm").addEventListener("submit", async (ev) => {
     ev.preventDefault();
