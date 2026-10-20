@@ -52,6 +52,30 @@ Hosted copy-trading services solve the repetition, but:
 - **Activity log:** filters (copied / closed / skipped / failed), search and CSV export.
 - **Templates** for reusing settings, **Pause all copying**, and desktop or in-page alerts.
 
+## Screenshots
+
+**Overview:** one glance tells you whether everything is copying, with a card for each account.
+
+![Overview](docs/screenshots/overview.png)
+
+**Accounts:** add an account with one form, then launch, stop or remove it.
+
+| Your accounts | Add an account |
+|---|---|
+| ![Accounts](docs/screenshots/accounts.png) | ![Add account](docs/screenshots/add-account.png) |
+
+**Settings for each account:** lot size with a live preview, safety limits, copy delays and symbol mapping.
+
+![Settings](docs/screenshots/settings.png)
+
+**Copied trades and activity:** the price each account got against the main account, and a searchable log of every copy, skip and error.
+
+| Copied trades | Activity |
+|---|---|
+| ![Copied trades](docs/screenshots/copied-trades.png) | ![Activity](docs/screenshots/activity.png) |
+
+<sub>Account numbers in the screenshots are sample numbers. To refresh them: `cd dashboard\e2e` then `npm run screenshots`.</sub>
+
 ## Quick start
 
 You need: **Windows**, **MT5** installed once (from any broker), and **Go 1.22+**.
