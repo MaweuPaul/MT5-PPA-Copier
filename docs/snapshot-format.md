@@ -1,6 +1,6 @@
 # Snapshot & file formats (v1)
 
-Every TradeCopier component (the MQL5 EAs and the Go dashboard now; MQL4 and cTrader later) talks through plain files in the MetaTrader **Common Files** folder:
+Every PPA Copier component (the MQL5 EAs and the Go dashboard now; MQL4 and cTrader later) talks through plain files in the MetaTrader **Common Files** folder:
 
 ```
 %APPDATA%\MetaQuotes\Terminal\Common\Files\TradeCopier\

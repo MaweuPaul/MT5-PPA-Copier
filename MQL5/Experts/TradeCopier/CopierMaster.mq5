@@ -3,9 +3,9 @@
 //| Publishes this account's open positions for TradeCopier followers.|
 //| Attach to any one chart in the master terminal.                   |
 //+------------------------------------------------------------------+
-#property copyright   "TradeCopier"
+#property copyright   "MT5 MT4 PPA Copier"
 #property version     "1.00"
-#property description "TradeCopier master: publishes open positions to followers on this PC."
+#property description "PPA Copier master: publishes open positions to followers on this PC."
 
 #include <TradeCopier\Snapshot.mqh>
 
@@ -91,7 +91,7 @@ void Publish()
    if(!g_dirty)
      {
       g_lastPubMs = g_snap.pubMs;
-      Comment(StringFormat("TradeCopier MASTER %s | %d position(s) | published %s",
+      Comment(StringFormat("PPA Copier MASTER %s | %d position(s) | published %s",
                            g_snap.masterId, ArraySize(g_snap.positions), TimeToString(TimeLocal(), TIME_SECONDS)));
      }
   }

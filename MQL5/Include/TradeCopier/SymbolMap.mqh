@@ -65,14 +65,14 @@ private:
             continue;
          if(found != "")
            {
-            PrintFormat("TradeCopier: '%s' matches both '%s' and '%s' - set SymbolSuffix or SymbolMap", base, found, name);
+            PrintFormat("PPA Copier: '%s' matches both '%s' and '%s' - set SymbolSuffix or SymbolMap", base, found, name);
             return "";
            }
          found = name;
         }
       if(found != "" && Usable(found))
         {
-         PrintFormat("TradeCopier: no suffix set - auto-detected '%s' for '%s'", found, base);
+         PrintFormat("PPA Copier: no suffix set - auto-detected '%s' for '%s'", found, base);
          return found;
         }
       return "";
@@ -181,9 +181,9 @@ public:
       m_cacheVal[n] = result;
 
       if(result == "")
-         PrintFormat("TradeCopier: no tradable symbol for master symbol '%s' - set SymbolSuffix or SymbolMap", masterSymbol);
+         PrintFormat("PPA Copier: no tradable symbol for master symbol '%s' - set SymbolSuffix or SymbolMap", masterSymbol);
       else if(result != masterSymbol)
-         PrintFormat("TradeCopier: master symbol '%s' -> '%s'", masterSymbol, result);
+         PrintFormat("PPA Copier: master symbol '%s' -> '%s'", masterSymbol, result);
       return result;
      }
   };

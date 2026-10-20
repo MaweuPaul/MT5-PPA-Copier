@@ -30,7 +30,7 @@ public:
    void              Write(const string kind, const long masterTicket, const string msg,
                            const double latencyMs = -1, const string extra = "")
      {
-      PrintFormat("TradeCopier: [%s]%s %s", kind,
+      PrintFormat("PPA Copier: [%s]%s %s", kind,
                   masterTicket > 0 ? StringFormat(" master #%I64d", masterTicket) : "", msg);
       if(m_path == "")
          return;

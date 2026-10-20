@@ -7,9 +7,9 @@
 //| our copies and fixes the difference (open / shrink / SL-TP /      |
 //| close), so restarts and missed updates heal themselves.           |
 //+------------------------------------------------------------------+
-#property copyright   "TradeCopier"
+#property copyright   "MT5 MT4 PPA Copier"
 #property version     "1.00"
-#property description "TradeCopier follower: copies the master's positions with a lot multiplier."
+#property description "PPA Copier follower: copies the master's positions with a lot multiplier."
 
 #include <Trade\Trade.mqh>
 #include <TradeCopier\Snapshot.mqh>
@@ -90,12 +90,12 @@ int OnInit()
   {
    if(MasterId == "")
      {
-      Alert("TradeCopier: set MasterId to the master account's login number.");
+      Alert("PPA Copier: set MasterId to the master account's login number.");
       return INIT_PARAMETERS_INCORRECT;
      }
    if(!CTcSettings::ValidMultiplier(LotMultiplier))
      {
-      Alert("TradeCopier: LotMultiplier must be between 0.01 and 100.");
+      Alert("PPA Copier: LotMultiplier must be between 0.01 and 100.");
       return INIT_PARAMETERS_INCORRECT;
      }
 
@@ -243,7 +243,7 @@ bool EnsureAccount()
 bool Refuse(const string state, const string why)
   {
    if(g_state != state)
-      Alert("TradeCopier: ", why);
+      Alert("PPA Copier: ", why);
    SetState(state);
    return false;
   }
@@ -266,7 +266,7 @@ void UpdateRisk()
      {
       g_log.Write("risk", 0, "copying stopped: " + g_risk.reason +
                   (g_cfg.closeOnLimit ? " - closing all copies" : " - open copies are kept"));
-      Alert("TradeCopier: ", g_risk.reason);
+      Alert("PPA Copier: ", g_risk.reason);
      }
    else if(!g_risk.breached && was)
       g_log.Write("risk", 0, "risk limit cleared - copying new trades again");
@@ -504,7 +504,7 @@ bool RetryOpen(const int k, const ulong now, const long mt, const string sym, co
                                          sym, g_links[k].attempts, MaxOpenAttempts, why));
    if(g_links[k].attempts >= MaxOpenAttempts)
      {
-      Alert(StringFormat("TradeCopier: gave up copying master #%I64d (%s) after %d attempts", mt, sym, MaxOpenAttempts));
+      Alert(StringFormat("PPA Copier: gave up copying master #%I64d (%s) after %d attempts", mt, sym, MaxOpenAttempts));
       return Skip(k, "too many failed attempts");
      }
    // A timeout may still have filled: wait long enough for it to show up before retrying.
@@ -652,7 +652,7 @@ bool CloseCopy(const int k, const ulong now)
    g_log.Write("error", g_links[k].master, StringFormat("close of #%I64u failed (attempt %d): %u %s",
                ft, g_links[k].attempts, rc, g_trade.ResultRetcodeDescription()));
    if(g_links[k].attempts == MaxOpenAttempts)
-      Alert(StringFormat("TradeCopier: cannot close copy #%I64u on %s - check it manually", ft, sym));
+      Alert(StringFormat("PPA Copier: cannot close copy #%I64u on %s - check it manually", ft, sym));
    return false;
   }
 
@@ -726,7 +726,7 @@ void SetState(const string state)
       return;
    g_log.Write("state", 0, StringFormat("%s -> %s", g_state == "" ? "start" : g_state, state));
    if(state == "master_stale")
-      Alert("TradeCopier: master ", MasterId, " stopped publishing - copies are kept open, nothing will be closed.");
+      Alert("PPA Copier: master ", MasterId, " stopped publishing - copies are kept open, nothing will be closed.");
    g_state = state;
   }
 
@@ -755,7 +755,7 @@ void WriteStatusIfDue(const ulong now)
    g_lastStatusMs = now;
 
    int openCopies = OpenCopies();
-   Comment(StringFormat("TradeCopier FOLLOWER x%s | master %s | %s | %d open cop%s | latency last %.1f ms, avg %.1f ms",
+   Comment(StringFormat("PPA Copier FOLLOWER x%s | master %s | %s | %d open cop%s | latency last %.1f ms, avg %.1f ms",
                         TcNum(g_cfg.multiplier, 4), MasterId, g_state, openCopies, openCopies == 1 ? "y" : "ies",
                         g_latency.Last(), g_latency.Avg()));
    if(g_statusFile == "")

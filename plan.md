@@ -1,4 +1,4 @@
-# Multi-Account Trade Copier: Plan
+# MT5 MT4 PPA Copier: Plan
 
 ## Goal
 Place a trade on one **master** MT5/MT4 account and have it copied to all **follower** accounts on the same PC. Followers can be prop firm or personal broker accounts. Each follower has its own lot multiplier.
