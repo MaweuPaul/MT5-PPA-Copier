@@ -61,17 +61,30 @@ func bestServerList(accounts []Account, server, source string) string {
 	return best
 }
 
-// loggedIn reports whether MT5 in dir has logged in to server today
-// (its journal says "authorized on <server>").
-func loggedIn(dir, server string) bool {
-	logs, _ := filepath.Glob(filepath.Join(dir, "logs", "2*.log"))
-	for _, l := range logs {
-		raw, err := os.ReadFile(l)
-		if err == nil && strings.Contains(decodeUTF16(raw), "authorized on "+server) {
-			return true
+var authorizedRe = regexp.MustCompile(`'(\d+)': authorized on ([^\s]+)`)
+
+// loginFromLogs returns the account MT5 in dataDir last logged in to, from
+// its journal ("'<login>': authorized on <server>"). MT5 only writes the
+// login to its settings when it closes, so the journal is the live source.
+func loginFromLogs(dataDir string) (login, server string, ok bool) {
+	logs, _ := filepath.Glob(filepath.Join(dataDir, "logs", "2*.log")) // named by date, so sorted oldest first
+	for i := len(logs) - 1; i >= 0; i-- {
+		raw, err := os.ReadFile(logs[i])
+		if err != nil {
+			continue
+		}
+		if all := authorizedRe.FindAllStringSubmatch(decodeUTF16(raw), -1); len(all) > 0 {
+			last := all[len(all)-1]
+			return last[1], last[2], true
 		}
 	}
-	return false
+	return "", "", false
+}
+
+// loggedIn reports whether MT5 in dataDir has logged in to server.
+func loggedIn(dataDir, server string) bool {
+	_, s, ok := loginFromLogs(dataDir)
+	return ok && strings.EqualFold(s, server)
 }
 
 func copyFile(src, dst string) error {

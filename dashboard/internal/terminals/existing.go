@@ -43,10 +43,9 @@ func Inspect(folder string) (Existing, error) {
 		return Existing{}, fmt.Errorf("no %s in %s - pick the folder MT5 is installed in", exe, dir)
 	}
 	data := findDataDir(dir)
-	raw, err := os.ReadFile(filepath.Join(data, "Config", "common.ini"))
-	if err != nil {
-		return Existing{}, errors.New("this MT5 has never been started - open it, log in to the account with Save password, then try again")
-	}
+	// common.ini has the saved login, but MT5 only writes it on exit; the
+	// journal (loginFromLogs, below) covers a running or brand-new MT5.
+	raw, _ := os.ReadFile(filepath.Join(data, "Config", "common.ini"))
 	ini := decodeUTF16(raw)
 	e := Existing{Dir: dir, DataDir: data, Profile: "Default"}
 	if m := iniLoginRe.FindStringSubmatch(ini); m != nil {
@@ -58,17 +57,25 @@ func Inspect(folder string) (Existing, error) {
 	if m := iniProfileRe.FindStringSubmatch(ini); m != nil {
 		e.Profile = m[1]
 	}
+	// A running MT5 may not have written its login to common.ini yet.
+	if login, server, ok := loginFromLogs(data); ok {
+		e.Login, e.Server = login, server
+	}
 	if e.Login == "" || e.Server == "" {
 		return Existing{}, errors.New("this MT5 isn't logged in to an account - log in once with Save password, then try again")
 	}
 	return e, nil
 }
 
-// findDataDir: a normal install keeps its files in
-// %APPDATA%\MetaQuotes\Terminal\<id>, whose origin.txt names the install
-// folder; a portable one keeps them next to terminal64.exe. Check AppData
-// first: a normal install also has a small Config folder of its own.
+// findDataDir: a portable install keeps its MQL5 folder next to
+// terminal64.exe; a normal one keeps it in %APPDATA%\MetaQuotes\Terminal\<id>,
+// whose origin.txt names the install folder. Decide by MQL5, not Config:
+// a normal install has a small Config folder of its own, and MT5 also
+// creates an AppData folder (with origin.txt) for portable installs.
 func findDataDir(dir string) string {
+	if exists(filepath.Join(dir, "MQL5")) {
+		return dir
+	}
 	origins, _ := filepath.Glob(filepath.Join(os.Getenv("APPDATA"), "MetaQuotes", "Terminal", "*", "origin.txt"))
 	for _, o := range origins {
 		raw, err := os.ReadFile(o)

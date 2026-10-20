@@ -65,14 +65,11 @@ func (m *Manager) openBlank(job *Job, role string, inputs []string, onLogin func
 
 	job.step("MT5 is open. Log in there: File → Open an Account → search your broker → " +
 		"Connect with an existing trade account → enter login, password and server → tick Save password → Finish.")
-	var e Existing
+	e := Existing{Dir: dir, DataDir: dir, Profile: "Default"}
 	if !waitUntil(func() bool {
-		found, err := Inspect(dir)
-		if err == nil && loggedIn(dir, found.Server) {
-			e = found
-			return true
-		}
-		return false
+		var ok bool
+		e.Login, e.Server, ok = loginFromLogs(dir)
+		return ok
 	}, blankLoginWait) {
 		return fmt.Errorf("no login within %v. That MT5 (%s) is still there: log in, then use "+
 			"\"An MT5 I already have\" with that folder - or close it and delete the folder", blankLoginWait, dir)
