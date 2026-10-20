@@ -17,8 +17,9 @@ import (
 var eaFiles = []string{"CopierMaster.ex5", "CopierFollower.ex5"}
 
 // copyMT5 copies the program files of an MT5 install, not its accounts,
-// history or logs, so the new install starts clean.
-func copyMT5(src, dst string) error {
+// history or logs, so the new install starts clean. serversFrom is the
+// servers.dat to use (see bestServerList).
+func copyMT5(src, serversFrom, dst string) error {
 	for _, name := range []string{"terminal64.exe", "MetaEditor64.exe", "Terminal.ico"} {
 		if err := copyFile(filepath.Join(src, name), filepath.Join(dst, name)); err != nil && name != "Terminal.ico" {
 			return err
@@ -29,9 +30,31 @@ func copyMT5(src, dst string) error {
 			return err
 		}
 	}
-	// The broker server list, so MT5 can find the account's server.
-	copyFile(filepath.Join(src, "Config", "servers.dat"), filepath.Join(dst, "Config", "servers.dat"))
+	// The broker server list: without the account's server in it, MT5 can't
+	// connect (it only learns new brokers through File > Open an Account).
+	copyFile(serversFrom, filepath.Join(dst, "Config", "servers.dat"))
 	return nil
+}
+
+// bestServerList picks the servers.dat most likely to know `server`: an
+// added account on that same server, else the biggest list among added
+// accounts (it has learned the most brokers), else the source install's.
+func bestServerList(accounts []Account, server, source string) string {
+	best, bestSize := filepath.Join(source, "Config", "servers.dat"), int64(0)
+	for _, a := range accounts {
+		p := filepath.Join(a.Dir, "Config", "servers.dat")
+		info, err := os.Stat(p)
+		if err != nil {
+			continue
+		}
+		if a.Server == server {
+			return p
+		}
+		if info.Size() > bestSize {
+			best, bestSize = p, info.Size()
+		}
+	}
+	return best
 }
 
 func copyFile(src, dst string) error {
@@ -82,19 +105,12 @@ func writeUTF16(path, text string) error {
 	return os.WriteFile(path, buf.Bytes(), 0o600)
 }
 
-// startupIni is an MT5 /config file: log in (and save the password in MT5),
-// allow algo trading, and open one chart with our EA attached.
-func startupIni(login, password, server, expert, presetFile, symbol string) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "[Common]\nLogin=%s\nPassword=%s\nServer=%s\nKeepPrivate=1\nNewsEnable=0\n", login, password, server)
-	b.WriteString("[Experts]\nAllowLiveTrading=1\nAllowDllImport=0\nEnabled=1\nAccount=0\nProfile=0\n")
-	if expert != "" {
-		fmt.Fprintf(&b, "[StartUp]\nExpert=%s\nSymbol=%s\nPeriod=H1\n", expert, symbol)
-		if presetFile != "" {
-			fmt.Fprintf(&b, "ExpertParameters=%s\n", presetFile)
-		}
-	}
-	return b.String()
+// startupIni is an MT5 /config file: log in (and save the password in MT5)
+// and allow algo trading. The EA itself is attached via the profile chart
+// (writeEAChart), which unlike [StartUp] survives restarts.
+func startupIni(login, password, server string) string {
+	return fmt.Sprintf("[Common]\nLogin=%s\nPassword=%s\nServer=%s\nKeepPrivate=1\nNewsEnable=0\n", login, password, server) +
+		"[Experts]\nAllowLiveTrading=1\nAllowDllImport=0\nEnabled=1\nAccount=0\nProfile=0\n"
 }
 
 var compileResultRe = regexp.MustCompile(`(\d+) errors?, (\d+) warnings?`)

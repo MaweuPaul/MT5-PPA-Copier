@@ -136,17 +136,18 @@ func (m *Manager) add(job *Job, r AddRequest, s Settings) error {
 		return fmt.Errorf("folder %s already exists - remove it or pick another accounts folder", dir)
 	}
 	job.step("Creating MT5 for %s in %s", r.Login, dir)
-	if err := copyMT5(s.MT5Source, dir); err != nil {
+	if err := copyMT5(s.MT5Source, bestServerList(m.Accounts(), r.Server, s.MT5Source), dir); err != nil {
 		return fmt.Errorf("copy MT5: %w", err)
 	}
 
-	expert, preset, symbol := `TradeCopier\CopierMaster`, "", "EURUSD"+r.Suffix
+	ea, inputs := "CopierMaster", []string{}
 	if r.Role == RoleFollower {
-		expert, preset = `TradeCopier\CopierFollower`, "tradecopier.set"
-		if err := writeUTF16(filepath.Join(dir, "MQL5", "Presets", preset),
-			fmt.Sprintf("MasterId=%s\nLotMultiplier=%g\nSymbolSuffix=%s\n", r.MasterID, r.Multiplier, r.Suffix)); err != nil {
-			return err
-		}
+		ea = "CopierFollower"
+		inputs = []string{"MasterId=" + r.MasterID, fmt.Sprintf("LotMultiplier=%g", r.Multiplier), "SymbolSuffix=" + r.Suffix}
+	}
+	// Any symbol the broker has works; the EA trades by the master's symbols.
+	if err := writeEAChart(dir, "EURUSD"+r.Suffix, ea, inputs); err != nil {
+		return err
 	}
 
 	// Compiled EAs come from the build cache. The very first account has none
@@ -154,7 +155,7 @@ func (m *Manager) add(job *Job, r AddRequest, s Settings) error {
 	// compile there, then restart with the EA.
 	if installEAs(m.buildDir(), dir) != nil {
 		job.step("First account: starting MT5 once to prepare the EAs (up to a minute)…")
-		if err := m.launch(dir, startupIni(r.Login, r.Password, r.Server, "", "", "")); err != nil {
+		if err := m.launch(dir, startupIni(r.Login, r.Password, r.Server)); err != nil {
 			return err
 		}
 		if !waitFor(filepath.Join(dir, "MQL5", "Include", "Trade", "Trade.mqh"), firstRunWait) {
@@ -171,7 +172,7 @@ func (m *Manager) add(job *Job, r AddRequest, s Settings) error {
 	}
 
 	job.step("Logging in to %s and attaching the copier…", r.Server)
-	if err := m.launch(dir, startupIni(r.Login, r.Password, r.Server, expert, preset, symbol)); err != nil {
+	if err := m.launch(dir, startupIni(r.Login, r.Password, r.Server)); err != nil {
 		return err
 	}
 	if err := m.saveAccount(Account{Login: r.Login, Server: r.Server, Role: r.Role, Dir: dir}); err != nil {
