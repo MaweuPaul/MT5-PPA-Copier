@@ -157,8 +157,9 @@ func (a *API) accountAction(action string) http.HandlerFunc {
 		case "stop":
 			err = terminals.Stop(dir)
 		case "remove":
-			if _, err = a.tm.Remove(login, r.URL.Query().Get("delete_folder") == "1"); err == nil {
-				a.st.Forget(login)
+			_, err = a.tm.Remove(login, r.URL.Query().Get("delete_folder") == "1")
+			if _, still := a.tm.Find(login); !still {
+				a.st.Forget(login) // unregistered, even if its folder couldn't be deleted
 			}
 		}
 		if err != nil {

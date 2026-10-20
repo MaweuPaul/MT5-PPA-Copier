@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/MaweuPaul/trade-copier/dashboard/internal/jsonfile"
 )
@@ -144,23 +145,29 @@ func (m *Manager) saveAccount(a Account) error {
 	return jsonfile.Write(m.path("accounts.json"), append(list, a))
 }
 
-// Remove unregisters an account after closing its MT5. With deleteFolder the
+// Remove closes an account's MT5 and unregisters it. With deleteFolder the
 // MT5 folder (its saved login, history and logs) is deleted too - but only a
-// folder that really is an MT5 install inside the accounts folder.
+// folder that really is an MT5 install inside the accounts folder. The
+// account is unregistered even if the folder can't be deleted; the error
+// then says what's left.
 func (m *Manager) Remove(login string, deleteFolder bool) (Account, error) {
 	a, ok := m.Find(login)
 	if !ok {
 		return a, errors.New("unknown account")
 	}
 	Stop(a.Dir)
-	if deleteFolder && a.Attached {
-		return a, fmt.Errorf("%s is an MT5 you already had, so it isn't deleted - remove it without deleting the folder", a.Dir)
+	if err := m.unregister(login); err != nil {
+		return a, err
 	}
 	if deleteFolder {
 		if err := m.deleteInstall(a.Dir); err != nil {
-			return a, err
+			return a, fmt.Errorf("removed from the dashboard, but the folder wasn't deleted: %w", err)
 		}
 	}
+	return a, nil
+}
+
+func (m *Manager) unregister(login string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	keep := []Account{}
@@ -169,7 +176,7 @@ func (m *Manager) Remove(login string, deleteFolder bool) (Account, error) {
 			keep = append(keep, x)
 		}
 	}
-	return a, jsonfile.Write(m.path("accounts.json"), keep)
+	return jsonfile.Write(m.path("accounts.json"), keep)
 }
 
 // deleteInstall refuses anything that isn't a direct sub-folder of the
@@ -181,9 +188,17 @@ func (m *Manager) deleteInstall(dir string) error {
 		return fmt.Errorf("not deleting %s: it isn't an MT5 folder inside %s - delete it yourself", dir, m.Settings().TerminalsDir)
 	}
 	if RunningDirs()[normDir(dir)] {
-		return fmt.Errorf("not deleting %s: its MT5 is still running", dir)
+		return fmt.Errorf("not deleting %s: its MT5 is still running - close it and delete the folder yourself", dir)
 	}
-	return os.RemoveAll(dir)
+	// Windows can keep files locked for a moment after MT5 exits; retry briefly.
+	var err error
+	for attempt := 0; attempt < 10; attempt++ {
+		if err = os.RemoveAll(dir); err == nil {
+			return nil
+		}
+		time.Sleep(time.Second)
+	}
+	return err
 }
 
 // StartAll launches every registered MT5 that isn't running (dashboard
