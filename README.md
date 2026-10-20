@@ -40,13 +40,18 @@ Hosted copy-trading services solve the repetition, but:
 - Daily loss limit and equity floor, with an option to close all copies when hit.
 - Max lot per trade, max open trades, max total lots.
 - Trading hours and a pause around high-impact news (MT5 economic calendar).
-- **Copy delay:** fixed plus a random extra, so accounts don't act in perfect sync.
+- **Copy delays:** separate open and close delays, each fixed plus a random extra, so accounts don't act in perfect sync.
 
 **Dashboard** (local web page)
 - **Overview:** a plain-language health banner ("Everything's running" / "Needs attention"), plus each account's equity, today's result, open trades and copy speed.
 - **Accounts:**
-  - **Add account** with one form: login, password, server, lot size. The dashboard creates the MT5, installs the copier, logs in and starts it.
-  - **Launch all**, Start / Stop / Remove for each account, and **Start with Windows**.
+  - **Add account** in three ways:
+    - **open a fresh MT5 and log in there** (the dashboard finishes the setup when it sees the login),
+    - type the login into the form,
+    - or **attach an MT5 you already have**, e.g. your prop firm's own install.
+    
+    Each new MT5 gets the copier installed and is registered automatically.
+  - **Launch all**, Start / Stop / Remove for each account (Remove can delete the account's folder), and **Start with Windows**.
 - **Settings for each account,** applied within a second with no restart. Includes a live preview ("Master 0.20 lot → 0.10 lot here").
 - **Copied trades:** the price each account got against the master's price.
 - **Activity log:** filters (copied / closed / skipped / failed), search and CSV export.
@@ -89,7 +94,7 @@ $env:GOARCH = "amd64"; go build -o tradecopier-dashboard.exe .
 
 Then in the dashboard:
 1. **Accounts → Setup:** check the MT5 install folder and where account folders go, then save.
-2. **+ Add account:** add your **main** account first, then each account to copy to.
+2. **+ Add account → "Open a new MT5 and I'll log in there":** add your **main** account first, then each account to copy to. In each MT5 that opens, log in via **File → Open an Account** (search your broker, tick **Save password**). The dashboard does the rest.
 3. Open a small trade on the main account and watch it appear on every account.
 
 Full guide, manual setup and troubleshooting: [docs/setup.md](docs/setup.md).

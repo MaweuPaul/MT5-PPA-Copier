@@ -36,23 +36,31 @@ Go to **Accounts → Setup**:
 
 ### 3. Add accounts
 
-Click **+ Add account**. Add your **main** account first, then each account to copy to:
+Click **+ Add account**. Add your **main** account first, then each account to copy to.
+
+**Which MT5?** There are three ways:
+
+| Option | How it works | Use when |
+|---|---|---|
+| **Open a new MT5 and I'll log in there** (recommended) | A fresh MT5 opens with the copier installed. You log in inside it: **File → Open an Account** → search your broker → **Connect with an existing trade account** → tick **Save password**. The dashboard spots the login (it waits up to 10 minutes) and finishes setting up. | Most accounts. MT5's own broker search always finds the right server. |
+| Set up a new MT5 with the login I type here | You enter the login, password and server in the form. | The broker's server is already known on this PC, e.g. you already have another account there. |
+| An MT5 I already have | You give the folder of an MT5 that's already logged in, e.g. your prop firm's own MT5. The dashboard detects the account, closes that MT5 for a moment, adds the copier on a **new chart** (yours aren't touched) and starts it again. | You already use that MT5. |
+
+**Copying fields** (copy accounts only):
 
 | Field | Example |
 |---|---|
-| Role | Copy trades **to** this account / This is my **main** account |
-| Account number, Password | Your MT5 login |
-| Server | Exactly as the broker gives it, e.g. `Pepperstone-Demo` |
 | Main account number | Filled in for you |
-| Lot size | `1` = same as main, `0.5` = half |
+| Lot size | `1` = same as main, `0.5` = half (account size ÷ main account size) |
 | Symbol ending | Optional, e.g. `m` for Exness. Usually detected automatically. |
+| Open delay + random up to | e.g. `1` + `2` s, so copies land 1–3 s after yours |
+| Close delay + random up to | `0` = instant (recommended) |
 
-**What the dashboard does for each account:**
-1. Creates `D:\MT5\<login>` from your MT5 install. It copies the broker server list from an account already on the same broker, so MT5 can find the server.
-2. Installs the copier EA and attaches it to MT5's saved chart, so it's reattached on every start.
-3. Starts MT5 with a **one-time start-up file** containing the login. MT5 logs in, saves the password itself, and turns on Algo Trading. **The file is deleted within 20 seconds.** The dashboard never stores the password.
-
-**About the very first account:** with no compiled EAs yet, it takes about a minute. MT5 starts once to create its standard library, the EAs are compiled, then MT5 restarts. On its first start MT5 may also download an update and restart by itself. That's normal.
+**Good to know:**
+- **Server names must match exactly what MT5 shows** (e.g. Maven's is `MavenTrade-Server`). If unsure, use the first option.
+- **The password** (second option only) goes into a one-time start-up file that's deleted within 20 seconds. After that, MT5 keeps the login itself. The dashboard never stores it.
+- **Each new MT5** gets the copier attached to its saved chart, so it comes back after every restart. It also gets the biggest broker server list on this PC (or one from an account on the same broker).
+- **On its first start,** MT5 may download an update and restart by itself. That's normal.
 
 ### 4. Test
 
@@ -63,11 +71,12 @@ Open a small trade (e.g. 0.01 lot) on the main account. Each account should copy
 - **Accounts page:**
   - **Launch all accounts** starts every MT5 that isn't running, main account first.
   - Each account has **Start / Stop / Remove**. Stop closes MT5 cleanly, like clicking ✕.
-  - **Remove** keeps the account's folder on disk. Delete it yourself if you don't need it.
+  - **Remove** closes that MT5, unregisters it and, if you choose, **deletes its folder**. Only folders inside your accounts folder are deleted. Trades already open on that account are **not** closed.
 - **Settings** on each account card:
   - lot size, symbol mapping
   - safety limits: daily loss, equity floor, max trades/lots, trading hours, news pause
-  - copy delay
+  - open and close delays (fixed + random extra, in seconds)
+  - "Copy new trades to this account": untick to hold an account without removing it
   
   Changes apply within about a second. A new lot size only affects **new** trades; open copies keep their size.
 - **Pause all copying:** new trades aren't copied. Closes and stop changes still are, so nothing is left unmanaged.
@@ -127,7 +136,7 @@ npm test
 |---|---|
 | Account card says **Algo Trading is off** | Turn on the **Algo Trading** button in that MT5 |
 | **Can't find main account** / **Main account offline** | The main account's MT5 is closed or CopierMaster isn't attached. Click **Launch all**. |
-| A new account never logs in | Wrong password or server name. Remove it, delete its folder and add it again. |
+| A new account never logs in | MT5 doesn't know that broker's server, or the password or server is wrong. **Remove** it (with its folder), then add it again with **Open a new MT5 and I'll log in there**, searching your broker inside MT5. |
 | Trades skipped: **no matching symbol** | Set the symbol ending (e.g. `m`) or a symbol map (`GOLD=XAUUSD`) in Settings |
 | Trades skipped: **not enough free margin** | The account is fully used. Close trades, lower its lot size, or top it up. |
 | Accounts show as stopped but MT5 is open | It's a different MT5 install than the one registered. Check the folder on the Accounts page. |

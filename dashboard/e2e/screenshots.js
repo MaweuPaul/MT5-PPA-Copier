@@ -45,8 +45,8 @@ async function shot(page, hash, file, prepare) {
     await p.locator("#settings").waitFor({ state: "visible" });
   });
   await shot(page, "accounts", "add-account.png", async (p) => {
-    await p.locator("#addAccountBtn").click();
-    await p.locator("#addForm [name=server]").fill("Broker-Demo");
+    await p.locator("#addAccountBtn").click();   // default: "Open a new MT5 and I'll log in there"
+    await p.locator("#addForm").waitFor({ state: "visible" });
   });
   await browser.close();
 })();
