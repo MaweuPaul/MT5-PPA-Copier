@@ -90,11 +90,15 @@ async function submitAdd() {
 
 async function onAction(btn) {
   const { login, accountAction: action } = btn.dataset;
-  if (action === "remove" && !confirm(`Remove ${login} from the dashboard?\n\nIts MT5 is closed. The folder stays on disk (it holds MT5's saved login and history) and you can delete it yourself.`)) return;
+  let deleteFolder = false;
+  if (action === "remove") {
+    if (!confirm(`Remove ${login} from the dashboard?\n\nIts MT5 is closed and copying to it stops. Trades already open on it are NOT closed.`)) return;
+    deleteFolder = confirm(`Also delete its MT5 folder?\n\nOK = delete the folder (saved login, history, logs).\nCancel = keep the folder on disk.`);
+  }
   btn.disabled = true;
   try {
-    const { dir } = await accountAction(login, action);
-    if (action === "remove") alert(`Removed. Its MT5 folder is still at:\n${dir}`);
+    const { dir } = await accountAction(login, action, { deleteFolder });
+    if (action === "remove") alert(deleteFolder ? "Removed, and its folder was deleted." : `Removed. Its MT5 folder is still at:\n${dir}`);
   } catch (err) {
     alert(err.message);
   }

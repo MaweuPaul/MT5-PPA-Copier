@@ -37,9 +37,9 @@ export const addAccount = (form) => request("/api/accounts", { method: "POST", b
 
 export const getAddJob = (id) => request(`/api/accounts/jobs/${encodeURIComponent(id)}`);
 
-export const accountAction = (login, action) =>
+export const accountAction = (login, action, { deleteFolder = false } = {}) =>
   action === "remove"
-    ? request(`/api/accounts/${encodeURIComponent(login)}`, { method: "DELETE" })
+    ? request(`/api/accounts/${encodeURIComponent(login)}${deleteFolder ? "?delete_folder=1" : ""}`, { method: "DELETE" })
     : request(`/api/accounts/${encodeURIComponent(login)}/${action}`, { method: "POST" });
 
 export const saveSetup = (setup) => request("/api/setup", { method: "PUT", body: setup });

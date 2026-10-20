@@ -9,6 +9,7 @@ package terminals
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -124,14 +125,20 @@ func (m *Manager) saveAccount(a Account) error {
 	return jsonfile.Write(m.path("accounts.json"), append(list, a))
 }
 
-// Remove unregisters an account after closing its MT5. The folder is kept
-// (it holds MT5's saved login and logs); the dashboard tells the user where.
-func (m *Manager) Remove(login string) (Account, error) {
+// Remove unregisters an account after closing its MT5. With deleteFolder the
+// MT5 folder (its saved login, history and logs) is deleted too - but only a
+// folder that really is an MT5 install inside the accounts folder.
+func (m *Manager) Remove(login string, deleteFolder bool) (Account, error) {
 	a, ok := m.find(login)
 	if !ok {
 		return a, errors.New("unknown account")
 	}
 	Stop(a.Dir)
+	if deleteFolder {
+		if err := m.deleteInstall(a.Dir); err != nil {
+			return a, err
+		}
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	keep := []Account{}
@@ -141,6 +148,20 @@ func (m *Manager) Remove(login string) (Account, error) {
 		}
 	}
 	return a, jsonfile.Write(m.path("accounts.json"), keep)
+}
+
+// deleteInstall refuses anything that isn't a direct sub-folder of the
+// accounts folder containing terminal64.exe, so a bad registry entry can
+// never delete something else.
+func (m *Manager) deleteInstall(dir string) error {
+	root := normDir(m.Settings().TerminalsDir)
+	if normDir(filepath.Dir(dir)) != root || !exists(filepath.Join(dir, exe)) {
+		return fmt.Errorf("not deleting %s: it isn't an MT5 folder inside %s - delete it yourself", dir, m.Settings().TerminalsDir)
+	}
+	if RunningDirs()[normDir(dir)] {
+		return fmt.Errorf("not deleting %s: its MT5 is still running", dir)
+	}
+	return os.RemoveAll(dir)
 }
 
 // StartAll launches every registered MT5 that isn't running (dashboard

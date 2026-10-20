@@ -84,7 +84,9 @@ func (a *API) accountAction(action string) http.HandlerFunc {
 		case "stop":
 			err = terminals.Stop(dir)
 		case "remove":
-			_, err = a.tm.Remove(login)
+			if _, err = a.tm.Remove(login, r.URL.Query().Get("delete_folder") == "1"); err == nil {
+				a.st.Forget(login)
+			}
 		}
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
