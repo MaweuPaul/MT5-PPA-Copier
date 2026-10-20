@@ -1,8 +1,8 @@
-# MT5 MT4 PPA Copier
+# MT5 PPA Copier
 
-**Prop & Personal Account copier for MetaTrader.** A local trade copier for MetaTrader 5. Place a trade once on your main account and it is copied, at the size you choose, to every other account you trade: prop firm accounts, personal broker accounts, or a mix of both. Everything runs on your own PC or VPS.
+**Prop & Personal Account copier for MetaTrader 5.** A local trade copier for MT5. Place a trade once on your main account and it is copied, at the size you choose, to every other account you trade: prop firm accounts, personal broker accounts, or a mix of both. Everything runs on your own PC or VPS.
 
-> **Status:** Working on MetaTrader 5 and tested on demo accounts at FxPro, Pepperstone and Exness. MT4 and cTrader are planned. See [plan.md](plan.md) for the design and roadmap.
+> **Status:** Works with MetaTrader 5 (MT5 only). Tested on demo accounts at FxPro, Pepperstone and Exness. See [plan.md](plan.md) for the design and roadmap.
 
 ---
 

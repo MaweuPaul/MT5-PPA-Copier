@@ -7,7 +7,7 @@
 //| our copies and fixes the difference (open / shrink / SL-TP /      |
 //| close), so restarts and missed updates heal themselves.           |
 //+------------------------------------------------------------------+
-#property copyright   "MT5 MT4 PPA Copier"
+#property copyright   "MT5 PPA Copier"
 #property version     "1.00"
 #property description "PPA Copier follower: copies the master's positions with a lot multiplier."
 

@@ -3,7 +3,7 @@
 //| Publishes this account's open positions for TradeCopier followers.|
 //| Attach to any one chart in the master terminal.                   |
 //+------------------------------------------------------------------+
-#property copyright   "MT5 MT4 PPA Copier"
+#property copyright   "MT5 PPA Copier"
 #property version     "1.00"
 #property description "PPA Copier master: publishes open positions to followers on this PC."
 

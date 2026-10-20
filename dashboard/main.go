@@ -1,4 +1,4 @@
-// Command dashboard is the local control panel for MT5 MT4 PPA Copier.
+// Command dashboard is the local control panel for MT5 PPA Copier.
 //
 // It only reads and writes the files the MT5 EAs share in the MetaTrader
 // Common Files folder; copying itself never goes through it, so trades keep
