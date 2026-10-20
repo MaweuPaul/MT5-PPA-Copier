@@ -43,3 +43,5 @@ export const accountAction = (login, action) =>
     : request(`/api/accounts/${encodeURIComponent(login)}/${action}`, { method: "POST" });
 
 export const saveSetup = (setup) => request("/api/setup", { method: "PUT", body: setup });
+
+export const startAllAccounts = () => request("/api/accounts/start-all", { method: "POST" });

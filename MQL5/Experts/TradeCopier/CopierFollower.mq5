@@ -347,6 +347,9 @@ void Reconcile(const ulong now)
         {
          k = TcLinkAdd(g_links, g_snap.positions[i].ticket, g_cfg.multiplier, TC_LINK_PENDING);
          g_links[k].retryAtMs = now + g_cfg.NextDelayMs();   // configured copy delay
+         // Resolve now: this adds the symbol to Market Watch, so its prices are
+         // already streaming when the delay ends (a cold symbol has no tick yet).
+         g_symbols.Resolve(g_snap.positions[i].symbol);
          dirty = true;
         }
       if(g_links[k].state == TC_LINK_PENDING)

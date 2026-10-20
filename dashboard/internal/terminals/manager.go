@@ -143,14 +143,17 @@ func (m *Manager) Remove(login string) (Account, error) {
 	return a, jsonfile.Write(m.path("accounts.json"), keep)
 }
 
-// StartAll launches every registered MT5 that isn't running (dashboard start-up).
-func (m *Manager) StartAll() {
-	running := RunningDirs()
-	for _, a := range m.Accounts() {
-		if !running[normDir(a.Dir)] {
-			Start(a.Dir, "")
+// StartAll launches every registered MT5 that isn't running (dashboard
+// start-up and the "Launch all" button) and returns how many it started.
+// The master goes first so followers find it publishing.
+func (m *Manager) StartAll() int {
+	running, started := RunningDirs(), 0
+	for _, a := range m.Accounts() { // master is sorted first
+		if !running[normDir(a.Dir)] && Start(a.Dir, "") == nil {
+			started++
 		}
 	}
+	return started
 }
 
 func exists(p string) bool { _, err := os.Stat(p); return err == nil }

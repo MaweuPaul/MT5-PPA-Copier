@@ -36,6 +36,11 @@ func (a *API) addJob(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, job)
 }
 
+// startAll launches every added account's MT5 that isn't already running.
+func (a *API) startAll(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]int{"started": a.tm.StartAll()})
+}
+
 // accountAction runs start / stop / remove on a registered account.
 func (a *API) accountAction(action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

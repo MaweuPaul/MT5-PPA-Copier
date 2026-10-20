@@ -16,24 +16,7 @@
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1020;
-    --panel: #121a2e;
-    --panel-2: #18223a;
-    --border: #233050;
-    --text: #e8edf7;
-    --muted: #8d9ab5;
-    --primary: #818cf8;
-    --primary-soft: #1e2350;
-    --good: #34d399;  --good-soft: #0f2a24;
-    --warn: #fbbf24;  --warn-soft: #2d2412;
-    --bad: #fb7185;   --bad-soft: #2f1520;
-    --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 28px rgb(0 0 0 / .25);
-    color-scheme: dark;
-  }
-}
-
+/* Always light: easier to read at a glance than following the OS dark mode. */
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }   /* pages, banners: never let a display rule override hidden */
 body {
@@ -81,7 +64,7 @@ button, input, select { font: inherit; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 22px 32px 0;
 }
-main { max-width: 1240px; padding: 20px 32px 48px; display: grid; gap: 20px; }
+main { padding: 20px 32px 48px; display: grid; gap: 20px; }   /* full width: tables have room on wide screens */
 .page { display: grid; gap: 20px; }
 .sub { color: var(--muted); font-size: 13px; }
 .mono { font-family: var(--mono); font-size: 13px; }

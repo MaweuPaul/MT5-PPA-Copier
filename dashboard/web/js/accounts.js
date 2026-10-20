@@ -1,7 +1,7 @@
 // Accounts page: add an account in one form, start / stop / remove MT5s,
 // and the one-time setup (MT5 folder, accounts folder, start with Windows).
 import { $, esc, pill, rowsOrEmpty } from "./dom.js";
-import { getAccounts, addAccount, getAddJob, accountAction, saveSetup } from "./api.js";
+import { getAccounts, addAccount, getAddJob, accountAction, saveSetup, startAllAccounts } from "./api.js";
 
 const JOB_POLL_MS = 1000;
 const dialog = $("#addAccount");
@@ -102,6 +102,17 @@ async function onAction(btn) {
 export function initAccounts({ overview }) {
   getOverview = overview;
   $("#addAccountBtn").addEventListener("click", openAdd);
+  $("#startAllBtn").addEventListener("click", async (ev) => {
+    const btn = ev.currentTarget;
+    btn.disabled = true;
+    try {
+      const { started } = await startAllAccounts();
+      btn.textContent = started ? `Starting ${started} account${started > 1 ? "s" : ""}…` : "All accounts already running";
+    } catch (err) {
+      alert(err.message);
+    }
+    setTimeout(() => { btn.textContent = "▶ Launch all accounts"; btn.disabled = false; refreshAccounts(); }, 4000);
+  });
   form.addEventListener("change", (ev) => ev.target.name === "role" && syncRole());
   form.addEventListener("submit", (ev) => {
     if (ev.submitter?.value !== "add") return;   // Close / ✕
