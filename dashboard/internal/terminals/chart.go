@@ -16,11 +16,12 @@ var chartTemplate []byte
 
 var symbolLineRe = regexp.MustCompile(`(?m)^symbol=.*$`)
 
-// writeEAChart makes chart01 of MT5's default profile a chart of `symbol`
-// with the copier EA attached. MT5 reopens profile charts on every start,
-// so the EA stays attached across restarts - unlike a /config [StartUp]
-// chart, which MT5 doesn't keep. inputs are "Name=value" EA inputs.
-func writeEAChart(dir, symbol, ea string, inputs []string) error {
+// writeEAChart writes a chart of `symbol` with the copier EA attached into
+// an MT5 profile (<dataDir>/MQL5/Profiles/Charts/<profile>/<file>). MT5
+// reopens profile charts on every start, so the EA stays attached across
+// restarts - unlike a /config [StartUp] chart, which MT5 doesn't keep.
+// inputs are "Name=value" EA inputs.
+func writeEAChart(dataDir, profile, file, symbol, ea string, inputs []string) error {
 	chart := symbolLineRe.ReplaceAllString(decodeUTF16(chartTemplate), "symbol="+symbol)
 	end := strings.LastIndex(chart, "</chart>")
 	if end < 0 {
@@ -29,7 +30,7 @@ func writeEAChart(dir, symbol, ea string, inputs []string) error {
 	expert := fmt.Sprintf("<expert>\nname=%s\npath=Experts\\TradeCopier\\%s.ex5\nexpertmode=1\n<inputs>\n%s\n</inputs>\n</expert>\n",
 		ea, ea, strings.Join(inputs, "\n"))
 	chart = chart[:end] + strings.ReplaceAll(expert, "\n", "\r\n") + chart[end:]
-	path := filepath.Join(dir, "MQL5", "Profiles", "Charts", "Default", "chart01.chr")
+	path := filepath.Join(dataDir, "MQL5", "Profiles", "Charts", profile, file)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}

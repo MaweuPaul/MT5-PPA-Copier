@@ -46,6 +46,50 @@ func (a *API) addAccount(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusAccepted, map[string]string{"job": id})
 }
 
+// attachAccount adds the copier to an MT5 the user already has.
+func (a *API) attachAccount(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		terminals.AttachRequest
+		MasterID           string  `json:"master_id"`
+		Multiplier         float64 `json:"multiplier"`
+		Suffix             string  `json:"symbol_suffix"`
+		DelayMs            int     `json:"delay_ms"`
+		DelayJitterMs      int     `json:"delay_jitter_ms"`
+		CloseDelayMs       int     `json:"close_delay_ms"`
+		CloseDelayJitterMs int     `json:"close_delay_jitter_ms"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	follower := req.Role == terminals.RoleFollower
+	cfg := store.DefaultConfig()
+	if follower {
+		if !store.ValidLogin(req.MasterID) {
+			writeError(w, http.StatusBadRequest, "enter the main account's login")
+			return
+		}
+		cfg.Multiplier, cfg.SymbolSuffix = req.Multiplier, req.Suffix
+		cfg.DelayMs, cfg.DelayJitterMs = req.DelayMs, req.DelayJitterMs
+		cfg.CloseDelayMs, cfg.CloseDelayJitterMs = req.CloseDelayMs, req.CloseDelayJitterMs
+		if err := cfg.Validate(); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+	id, found, err := a.tm.Attach(req.AttachRequest, func(string) []string { return []string{"MasterId=" + req.MasterID} })
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if follower {
+		if err := a.st.SaveConfig(found.Login, cfg); err != nil {
+			writeError(w, http.StatusInternalServerError, "saving its settings failed: "+err.Error())
+			return
+		}
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"job": id, "login": found.Login, "server": found.Server})
+}
+
 func (a *API) addJob(w http.ResponseWriter, r *http.Request) {
 	job, ok := a.tm.Job(r.PathValue("id"))
 	if !ok {
@@ -67,20 +111,16 @@ func (a *API) accountAction(action string) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		var dir string
-		for _, acc := range a.tm.Accounts() {
-			if acc.Login == login {
-				dir = acc.Dir
-			}
-		}
-		if dir == "" {
+		acc, ok := a.tm.Find(login)
+		if !ok {
 			writeError(w, http.StatusNotFound, "unknown account")
 			return
 		}
+		dir := acc.Dir
 		var err error
 		switch action {
 		case "start":
-			err = terminals.Start(dir, "")
+			err = acc.Start()
 		case "stop":
 			err = terminals.Stop(dir)
 		case "remove":

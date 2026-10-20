@@ -164,6 +164,16 @@ func decodeUTF16(b []byte) string {
 	return string(utf16.Decode(u))
 }
 
+// buildReady reports whether compiled EAs are cached to install from.
+func (m *Manager) buildReady() bool {
+	for _, f := range eaFiles {
+		if !exists(filepath.Join(m.buildDir(), f)) {
+			return false
+		}
+	}
+	return true
+}
+
 // installEAs copies the compiled EAs into a terminal.
 func installEAs(buildDir, terminalDir string) error {
 	for _, f := range eaFiles {

@@ -35,7 +35,25 @@ type Account struct {
 	Server string `json:"server"`
 	Role   string `json:"role"`
 	Dir    string `json:"dir"`
+	// Set for an MT5 that was attached rather than created by the dashboard.
+	// DataDir is where its MQL5 folder lives (under %APPDATA% for a normal,
+	// non-portable install); empty means portable (same as Dir).
+	DataDir  string `json:"data_dir,omitempty"`
+	Attached bool   `json:"attached,omitempty"`
 }
+
+// Data is the folder holding this MT5's MQL5, Config and logs.
+func (a Account) Data() string {
+	if a.DataDir != "" {
+		return a.DataDir
+	}
+	return a.Dir
+}
+
+func (a Account) Portable() bool { return normDir(a.Data()) == normDir(a.Dir) }
+
+// Start launches this account's MT5 (portable or not).
+func (a Account) Start() error { return Start(a.Dir, "", a.Portable()) }
 
 type Manager struct {
 	root    string // TradeCopier folder in Common Files
@@ -103,7 +121,8 @@ func (m *Manager) Statuses() []AccountStatus {
 	return out
 }
 
-func (m *Manager) find(login string) (Account, bool) {
+// Find returns a registered account by login.
+func (m *Manager) Find(login string) (Account, bool) {
 	for _, a := range m.Accounts() {
 		if a.Login == login {
 			return a, true
@@ -129,11 +148,14 @@ func (m *Manager) saveAccount(a Account) error {
 // MT5 folder (its saved login, history and logs) is deleted too - but only a
 // folder that really is an MT5 install inside the accounts folder.
 func (m *Manager) Remove(login string, deleteFolder bool) (Account, error) {
-	a, ok := m.find(login)
+	a, ok := m.Find(login)
 	if !ok {
 		return a, errors.New("unknown account")
 	}
 	Stop(a.Dir)
+	if deleteFolder && a.Attached {
+		return a, fmt.Errorf("%s is an MT5 you already had, so it isn't deleted - remove it without deleting the folder", a.Dir)
+	}
 	if deleteFolder {
 		if err := m.deleteInstall(a.Dir); err != nil {
 			return a, err
@@ -170,7 +192,7 @@ func (m *Manager) deleteInstall(dir string) error {
 func (m *Manager) StartAll() int {
 	running, started := RunningDirs(), 0
 	for _, a := range m.Accounts() { // master is sorted first
-		if !running[normDir(a.Dir)] && Start(a.Dir, "") == nil {
+		if !running[normDir(a.Dir)] && a.Start() == nil {
 			started++
 		}
 	}

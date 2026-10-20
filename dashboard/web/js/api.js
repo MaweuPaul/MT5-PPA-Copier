@@ -45,3 +45,5 @@ export const accountAction = (login, action, { deleteFolder = false } = {}) =>
 export const saveSetup = (setup) => request("/api/setup", { method: "PUT", body: setup });
 
 export const startAllAccounts = () => request("/api/accounts/start-all", { method: "POST" });
+
+export const attachAccount = (form) => request("/api/accounts/attach", { method: "POST", body: form });

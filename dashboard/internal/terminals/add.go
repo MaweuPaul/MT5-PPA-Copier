@@ -104,7 +104,7 @@ func (m *Manager) Add(r AddRequest) (string, error) {
 	if err := r.validate(); err != nil {
 		return "", err
 	}
-	if _, ok := m.find(r.Login); ok {
+	if _, ok := m.Find(r.Login); ok {
 		return "", errors.New("this account is already added")
 	}
 	s := m.Settings()
@@ -152,7 +152,7 @@ func (m *Manager) add(job *Job, r AddRequest, s Settings) error {
 		inputs = []string{"MasterId=" + r.MasterID, fmt.Sprintf("LotMultiplier=%g", r.Multiplier), "SymbolSuffix=" + r.Suffix}
 	}
 	// Any symbol the broker has works; the EA trades by the master's symbols.
-	if err := writeEAChart(dir, "EURUSD"+r.Suffix, ea, inputs); err != nil {
+	if err := writeEAChart(dir, "Default", "chart01.chr", "EURUSD"+r.Suffix, ea, inputs); err != nil {
 		return err
 	}
 
@@ -216,7 +216,7 @@ func (m *Manager) launch(dir, ini string) error {
 	if err := writeUTF16(path, ini); err != nil {
 		return err
 	}
-	if err := Start(dir, path); err != nil {
+	if err := Start(dir, path, true); err != nil {
 		os.Remove(path)
 		return fmt.Errorf("start MT5: %w", err)
 	}

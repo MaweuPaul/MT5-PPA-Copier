@@ -33,9 +33,12 @@ var (
 
 func normDir(dir string) string { return strings.ToLower(filepath.Clean(dir)) }
 
-// Start launches a portable MT5. configIni (optional) is an MT5 /config file.
-func Start(dir, configIni string) error {
-	args := []string{"/portable"}
+// Start launches an MT5. configIni (optional) is an MT5 /config file.
+func Start(dir, configIni string, portable bool) error {
+	args := []string{}
+	if portable {
+		args = append(args, "/portable")
+	}
 	if configIni != "" {
 		args = append(args, "/config:"+configIni)
 	}

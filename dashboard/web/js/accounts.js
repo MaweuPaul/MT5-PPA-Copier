@@ -2,7 +2,7 @@
 // and the one-time setup (MT5 folder, accounts folder, start with Windows).
 import { $, esc, pill, rowsOrEmpty } from "./dom.js";
 import { readDelays } from "./delays.js";
-import { getAccounts, addAccount, getAddJob, accountAction, saveSetup, startAllAccounts } from "./api.js";
+import { getAccounts, addAccount, attachAccount, getAddJob, accountAction, saveSetup, startAllAccounts } from "./api.js";
 
 const JOB_POLL_MS = 1000;
 const dialog = $("#addAccount");
@@ -38,10 +38,17 @@ export async function refreshAccounts() {
   } catch { /* connection state is shown by the overview poll */ }
 }
 
-function syncRole() {
-  const follower = form.elements.role.value === "follower";
+// Shows the fields that apply to the chosen role and MT5 source.
+function syncForm() {
+  const e = form.elements;
+  const follower = e.role.value === "follower";
+  const existing = e.source.value === "existing";
   form.querySelector(".follower-only").hidden = !follower;
-  form.elements.master_id.required = follower;
+  form.querySelector(".new-only").hidden = existing;
+  form.querySelector(".existing-only").hidden = !existing;
+  e.master_id.required = follower;
+  for (const name of ["login", "password", "server"]) e[name].required = !existing;
+  e.folder.required = existing;
 }
 
 function openAdd() {
@@ -51,7 +58,7 @@ function openAdd() {
   $("#addSteps").hidden = true;
   $("#addError").hidden = true;
   $("#addSubmit").disabled = false;
-  syncRole();
+  syncForm();
   dialog.showModal();
 }
 
@@ -63,15 +70,17 @@ function showSteps(steps, done) {
 
 async function submitAdd() {
   const e = form.elements;
-  const body = {
-    role: e.role.value, login: e.login.value.trim(), password: e.password.value, server: e.server.value.trim(),
-    master_id: e.master_id.value.trim(), multiplier: Number(e.multiplier.value || 1), symbol_suffix: e.symbol_suffix.value.trim(),
-    ...readDelays(form),
+  const existing = e.source.value === "existing";
+  const copying = {
+    role: e.role.value, master_id: e.master_id.value.trim(), multiplier: Number(e.multiplier.value || 1),
+    symbol_suffix: e.symbol_suffix.value.trim(), ...readDelays(form),
   };
   $("#addError").hidden = true;
   $("#addSubmit").disabled = true;
   try {
-    const { job } = await addAccount(body);
+    const { job } = existing
+      ? await attachAccount({ ...copying, folder: e.folder.value.trim() })
+      : await addAccount({ ...copying, login: e.login.value.trim(), password: e.password.value, server: e.server.value.trim() });
     e.password.value = "";   // don't keep it in the page
     for (;;) {
       const s = await getAddJob(job);
@@ -119,7 +128,7 @@ export function initAccounts({ overview }) {
     }
     setTimeout(() => { btn.textContent = "▶ Launch all accounts"; btn.disabled = false; refreshAccounts(); }, 4000);
   });
-  form.addEventListener("change", (ev) => ev.target.name === "role" && syncRole());
+  form.addEventListener("change", (ev) => ["role", "source"].includes(ev.target.name) && syncForm());
   form.addEventListener("submit", (ev) => {
     if (ev.submitter?.value !== "add") return;   // Close / ✕
     ev.preventDefault();
