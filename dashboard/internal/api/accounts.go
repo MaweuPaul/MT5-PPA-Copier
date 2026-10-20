@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/MaweuPaul/trade-copier/dashboard/internal/store"
 	"github.com/MaweuPaul/trade-copier/dashboard/internal/terminals"
 )
 
@@ -19,10 +20,28 @@ func (a *API) addAccount(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
+	// A follower's lot size, suffix and delays become its dashboard config,
+	// checked before anything is created and picked up when its EA starts.
+	cfg := store.DefaultConfig()
+	if req.Role == terminals.RoleFollower {
+		cfg.Multiplier, cfg.SymbolSuffix = req.Multiplier, req.Suffix
+		cfg.DelayMs, cfg.DelayJitterMs = req.DelayMs, req.DelayJitterMs
+		cfg.CloseDelayMs, cfg.CloseDelayJitterMs = req.CloseDelayMs, req.CloseDelayJitterMs
+		if err := cfg.Validate(); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
 	id, err := a.tm.Add(req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+	if req.Role == terminals.RoleFollower {
+		if err := a.st.SaveConfig(req.Login, cfg); err != nil {
+			writeError(w, http.StatusInternalServerError, "account is being added, but saving its settings failed: "+err.Error())
+			return
+		}
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"job": id})
 }

@@ -48,10 +48,9 @@ public:
    double            maxTotalLots;
    string            tradeStart, tradeEnd;   // "HH:MM" local PC time; both empty = always
    int               newsMinutes;      // skip new copies +/- this many minutes around high-impact news
-   //--- delays before copying (0 = instant)
-   int               delayMs;          // fixed
-   int               delayJitterMs;    // plus random 0..this
-   bool              delayCloses;      // also delay closes (off: closes stay instant)
+   //--- delays before copying: fixed + random 0..jitter (all 0 = instant)
+   int               delayMs, delayJitterMs;             // before opening a copy
+   int               closeDelayMs, closeDelayJitterMs;   // before closing one
    string            lastError;
 
    static bool       ValidMultiplier(const double m) { return m >= TC_MIN_MULTIPLIER && m <= TC_MAX_MULTIPLIER; }
@@ -73,7 +72,7 @@ public:
       suffix = sfx; prefix = pfx; strip = strp; map = mp;
       dailyLossLimit = 0; equityFloor = 0; closeOnLimit = false; maxOpenTrades = 0;
       maxTotalLots = 0; tradeStart = ""; tradeEnd = ""; newsMinutes = 0;
-      delayMs = 0; delayJitterMs = 0; delayCloses = false;
+      delayMs = 0; delayJitterMs = 0; closeDelayMs = 0; closeDelayJitterMs = 0;
      }
 
    // Applies a config file. Missing keys keep their current value. An invalid
@@ -83,9 +82,10 @@ public:
       CTcSettings n;
       n.Assign(this);                            // start from current values
       Bool(text, "enabled", n.enabled);
-      Bool(text, "delay_closes", n.delayCloses);
-      n.delayMs        = (int)Num(text, "delay_ms", delayMs);
-      n.delayJitterMs  = (int)Num(text, "delay_jitter_ms", delayJitterMs);
+      n.delayMs            = (int)Num(text, "delay_ms", delayMs);
+      n.delayJitterMs      = (int)Num(text, "delay_jitter_ms", delayJitterMs);
+      n.closeDelayMs       = (int)Num(text, "close_delay_ms", closeDelayMs);
+      n.closeDelayJitterMs = (int)Num(text, "close_delay_jitter_ms", closeDelayJitterMs);
       Bool(text, "round_up_min", n.roundUpMin);
       Bool(text, "copy_sltp", n.copySLTP);
       Bool(text, "close_on_limit", n.closeOnLimit);
@@ -108,7 +108,7 @@ public:
          lastError = "multiplier must be 0.01-100";
       else if(n.maxLot < 0 || n.dailyLossLimit < 0 || n.equityFloor < 0 || n.maxOpenTrades < 0 || n.maxTotalLots < 0)
          lastError = "limits can't be negative";
-      else if(n.delayMs < 0 || n.delayMs > 60000 || n.delayJitterMs < 0 || n.delayJitterMs > 30000)
+      else if(!ValidDelay(n.delayMs, n.delayJitterMs) || !ValidDelay(n.closeDelayMs, n.closeDelayJitterMs))
          lastError = "delay must be 0-60000 ms and random extra 0-30000 ms";
       else if(n.newsMinutes < 0 || n.newsMinutes > 240)
          lastError = "news window must be 0-240 minutes";
@@ -133,14 +133,22 @@ public:
       dailyLossLimit = o.dailyLossLimit; equityFloor = o.equityFloor; closeOnLimit = o.closeOnLimit;
       maxOpenTrades = o.maxOpenTrades; maxTotalLots = o.maxTotalLots;
       tradeStart = o.tradeStart; tradeEnd = o.tradeEnd; newsMinutes = o.newsMinutes;
-      delayMs = o.delayMs; delayJitterMs = o.delayJitterMs; delayCloses = o.delayCloses;
+      delayMs = o.delayMs; delayJitterMs = o.delayJitterMs;
+      closeDelayMs = o.closeDelayMs; closeDelayJitterMs = o.closeDelayJitterMs;
+     }
+
+   static bool       ValidDelay(const int fixedMs, const int jitterMs)
+     {
+      return fixedMs >= 0 && fixedMs <= 60000 && jitterMs >= 0 && jitterMs <= 30000;
      }
 
    // Fixed delay + random 0..jitter, so accounts don't act in perfect sync.
-   ulong             NextDelayMs()
+   static ulong      Delay(const int fixedMs, const int jitterMs)
      {
-      return (ulong)delayMs + (delayJitterMs > 0 ? (ulong)(MathRand() % (delayJitterMs + 1)) : 0);
+      return (ulong)fixedMs + (jitterMs > 0 ? (ulong)(MathRand() % (jitterMs + 1)) : 0);
      }
+   ulong             NextOpenDelayMs()  { return Delay(delayMs, delayJitterMs); }
+   ulong             NextCloseDelayMs() { return Delay(closeDelayMs, closeDelayJitterMs); }
 
    string            Summary()
      {
@@ -171,7 +179,8 @@ public:
              + ",\"news_minutes\":" + IntegerToString(newsMinutes)
              + ",\"delay_ms\":" + IntegerToString(delayMs)
              + ",\"delay_jitter_ms\":" + IntegerToString(delayJitterMs)
-             + ",\"delay_closes\":" + TcBool(delayCloses)
+             + ",\"close_delay_ms\":" + IntegerToString(closeDelayMs)
+             + ",\"close_delay_jitter_ms\":" + IntegerToString(closeDelayJitterMs)
              + "}";
      }
   };

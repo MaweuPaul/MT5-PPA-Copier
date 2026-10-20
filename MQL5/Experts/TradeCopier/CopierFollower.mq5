@@ -346,7 +346,7 @@ void Reconcile(const ulong now)
       if(k < 0)
         {
          k = TcLinkAdd(g_links, g_snap.positions[i].ticket, g_cfg.multiplier, TC_LINK_PENDING);
-         g_links[k].retryAtMs = now + g_cfg.NextDelayMs();   // configured copy delay
+         g_links[k].retryAtMs = now + g_cfg.NextOpenDelayMs();   // configured copy delay
          // Resolve now: this adds the symbol to Market Watch, so its prices are
          // already streaming when the delay ends (a cold symbol has no tick yet).
          g_symbols.Resolve(g_snap.positions[i].symbol);
@@ -373,8 +373,8 @@ void Reconcile(const ulong now)
          continue;
       if(g_links[k].state == TC_LINK_OPEN)
         {
-         if(g_cfg.delayCloses && g_links[k].closeDueMs == 0 && g_links[k].closeSentMs == 0)
-            g_links[k].closeDueMs = now + g_cfg.NextDelayMs();
+         if(g_links[k].closeDueMs == 0 && g_links[k].closeSentMs == 0)
+            g_links[k].closeDueMs = now + g_cfg.NextCloseDelayMs();   // 0 = close straight away
          if(now < g_links[k].closeDueMs || now < g_links[k].retryAtMs || !CloseCopy(k, now))
             continue;                        // delayed, in flight, or retry later
         }

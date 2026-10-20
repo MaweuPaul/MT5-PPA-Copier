@@ -32,10 +32,16 @@ type Config struct {
 	TradeEnd       string  `json:"trade_end"`
 	NewsMinutes    int     `json:"news_minutes"`
 
-	// Delay before copying: fixed + random 0..jitter
-	DelayMs       int  `json:"delay_ms"`
-	DelayJitterMs int  `json:"delay_jitter_ms"`
-	DelayCloses   bool `json:"delay_closes"`
+	// Delays: fixed + random 0..jitter, before opening and before closing a copy
+	DelayMs            int `json:"delay_ms"`
+	DelayJitterMs      int `json:"delay_jitter_ms"`
+	CloseDelayMs       int `json:"close_delay_ms"`
+	CloseDelayJitterMs int `json:"close_delay_jitter_ms"`
+}
+
+// DefaultConfig is what a new follower starts with.
+func DefaultConfig() Config {
+	return Config{Enabled: true, Multiplier: 1, RoundUpMin: true, CopySLTP: true}
 }
 
 // Limits shared with the EA (Settings.mqh CTcSettings::Apply) and the UI
@@ -67,13 +73,17 @@ func (c Config) Validate() error {
 		return errors.New("risk limits can't be negative")
 	case c.NewsMinutes < 0 || c.NewsMinutes > maxNewsMin:
 		return fmt.Errorf("news window must be 0-%d minutes", maxNewsMin)
-	case c.DelayMs < 0 || c.DelayMs > maxDelayMs || c.DelayJitterMs < 0 || c.DelayJitterMs > maxJitterMs:
-		return fmt.Errorf("delay must be 0-%d ms and random extra 0-%d ms", maxDelayMs, maxJitterMs)
+	case !validDelay(c.DelayMs, c.DelayJitterMs) || !validDelay(c.CloseDelayMs, c.CloseDelayJitterMs):
+		return fmt.Errorf("delays must be 0-%d ms with a random extra of 0-%d ms", maxDelayMs, maxJitterMs)
 	case (c.TradeStart == "") != (c.TradeEnd == ""),
 		c.TradeStart != "" && (!hhmmRe.MatchString(c.TradeStart) || !hhmmRe.MatchString(c.TradeEnd)):
 		return errors.New("trading hours must both be HH:MM (24h), or both empty")
 	}
 	return validateSymbolMap(c.SymbolMap)
+}
+
+func validDelay(fixed, jitter int) bool {
+	return fixed >= 0 && fixed <= maxDelayMs && jitter >= 0 && jitter <= maxJitterMs
 }
 
 // validateSymbolMap checks "MASTER=FOLLOWER;MASTER=FOLLOWER".

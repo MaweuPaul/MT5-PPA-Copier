@@ -1,6 +1,7 @@
 // Accounts page: add an account in one form, start / stop / remove MT5s,
 // and the one-time setup (MT5 folder, accounts folder, start with Windows).
 import { $, esc, pill, rowsOrEmpty } from "./dom.js";
+import { readDelays } from "./delays.js";
 import { getAccounts, addAccount, getAddJob, accountAction, saveSetup, startAllAccounts } from "./api.js";
 
 const JOB_POLL_MS = 1000;
@@ -65,6 +66,7 @@ async function submitAdd() {
   const body = {
     role: e.role.value, login: e.login.value.trim(), password: e.password.value, server: e.server.value.trim(),
     master_id: e.master_id.value.trim(), multiplier: Number(e.multiplier.value || 1), symbol_suffix: e.symbol_suffix.value.trim(),
+    ...readDelays(form),
   };
   $("#addError").hidden = true;
   $("#addSubmit").disabled = true;

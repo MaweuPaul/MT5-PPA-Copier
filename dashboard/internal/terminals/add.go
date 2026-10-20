@@ -20,6 +20,12 @@ type AddRequest struct {
 	MasterID   string  `json:"master_id"` // followers only
 	Multiplier float64 `json:"multiplier"`
 	Suffix     string  `json:"symbol_suffix"`
+	// Copy delays (followers): fixed + random extra, in ms. The API saves
+	// them, with the lot size and suffix, as the follower's dashboard config.
+	DelayMs            int `json:"delay_ms"`
+	DelayJitterMs      int `json:"delay_jitter_ms"`
+	CloseDelayMs       int `json:"close_delay_ms"`
+	CloseDelayJitterMs int `json:"close_delay_jitter_ms"`
 }
 
 // JobStatus is the progress of adding an account; the UI polls it.

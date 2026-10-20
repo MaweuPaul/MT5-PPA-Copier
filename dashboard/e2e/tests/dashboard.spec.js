@@ -69,8 +69,8 @@ test("settings: invalid values are not saved", async ({ page, request }) => {
 
 test("settings: copy delay is applied live by the EA", async ({ page, request }) => {
   await openSettings(page, pepper);
-  await page.locator('#settingsForm [name="delay_ms"]').fill("1500");
-  await page.locator('#settingsForm [name="delay_jitter_ms"]').fill("500");
+  await page.locator('#settingsForm [data-ms="delay_ms"]').fill("1.5");      // seconds in the UI, ms in config
+  await page.locator('#settingsForm [data-ms="delay_jitter_ms"]').fill("0.5");
   await page.locator("#saveBtn").click();
   await expect(page.locator("#settings")).toBeHidden();
   await expect.poll(async () => (await overview(request)).followers.find((f) => String(f.login) === pepper).settings.delay_ms)

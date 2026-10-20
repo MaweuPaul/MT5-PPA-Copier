@@ -2,6 +2,7 @@
 import { $, esc, lots } from "./dom.js";
 import { getConfig, saveConfig, saveTemplate } from "./api.js";
 import { refreshTemplates } from "./templates.js";
+import { fillDelays, readDelays } from "./delays.js";
 import { copyLots, validMultiplier, MIN_MULTIPLIER, MAX_MULTIPLIER } from "./lots.js";
 
 const dialog = $("#settings");
@@ -26,10 +27,7 @@ const FIELDS = {
   trade_start: "text",
   trade_end: "text",
   news_minutes: "number",
-  delay_ms: "number",
-  delay_jitter_ms: "number",
-  delay_closes: "bool",
-};
+};   // delays are read separately (entered in seconds, see delays.js)
 
 let login = null;
 let templates = {};
@@ -41,6 +39,7 @@ function fillForm(config) {
     if (type === "bool") el.checked = !!config[name];
     else el.value = config[name] ?? "";
   }
+  fillDelays(form, config);
 }
 
 function readForm() {
@@ -49,7 +48,7 @@ function readForm() {
     const el = form.elements[name];
     out[name] = type === "bool" ? el.checked : type === "number" ? Number(el.value || 0) : el.value.trim();
   }
-  return out;
+  return { ...out, ...readDelays(form) };
 }
 
 function showError(msg) {
