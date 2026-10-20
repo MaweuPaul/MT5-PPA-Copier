@@ -132,6 +132,7 @@ function followerCard(f) {
     ${why ? `<p class="account-note">${esc(why)}</p>` : ""}
     <div class="actions" style="justify-content:flex-start">
       ${f.online ? "" : `<button class="btn btn-small btn-good" type="button" data-account-action="start" data-login="${esc(f.login)}">▶ Start MT5</button>`}
+      ${f.online ? "" : `<button class="btn btn-small btn-danger" type="button" data-account-action="remove" data-login="${esc(f.login)}">Remove</button>`}
       <button class="btn btn-small" type="button" data-settings="${esc(f.login)}">⚙ Settings</button>
     </div>
   </article>`;

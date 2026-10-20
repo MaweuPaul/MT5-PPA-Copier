@@ -109,7 +109,7 @@ async function onAction(btn) {
   btn.disabled = true;
   try {
     const { dir } = await accountAction(login, action, { deleteFolder });
-    if (action === "remove") alert(deleteFolder ? "Removed, and its folder was deleted." : `Removed. Its MT5 folder is still at:\n${dir}`);
+    if (action === "remove") alert(!dir ? "Removed." : deleteFolder ? "Removed, and its folder was deleted." : `Removed. Its MT5 folder is still at:\n${dir}`);
   } catch (err) {
     alert(err.message);
   }

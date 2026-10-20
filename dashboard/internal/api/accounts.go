@@ -145,6 +145,13 @@ func (a *API) accountAction(action string) http.HandlerFunc {
 			return
 		}
 		acc, ok := a.tm.Find(login)
+		if !ok && action == "remove" {
+			// Not registered (e.g. a copier that once ran in an MT5 set up by
+			// hand): just forget its files so it leaves the Overview.
+			a.st.Forget(login)
+			writeJSON(w, http.StatusOK, map[string]string{"dir": ""})
+			return
+		}
 		if !ok {
 			writeError(w, http.StatusNotFound, "unknown account")
 			return
