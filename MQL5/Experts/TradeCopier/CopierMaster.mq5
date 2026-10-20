@@ -4,7 +4,7 @@
 //| Attach to any one chart in the master terminal.                   |
 //+------------------------------------------------------------------+
 #property copyright   "MT5 PPA Copier"
-#property version     "1.00"
+#property version     "2.00"
 #property description "PPA Copier master: publishes open positions to followers on this PC."
 
 #include <TradeCopier\Snapshot.mqh>

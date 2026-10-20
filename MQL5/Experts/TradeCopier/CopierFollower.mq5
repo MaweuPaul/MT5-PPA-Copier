@@ -8,7 +8,7 @@
 //| close), so restarts and missed updates heal themselves.           |
 //+------------------------------------------------------------------+
 #property copyright   "MT5 PPA Copier"
-#property version     "1.00"
+#property version     "2.00"
 #property description "PPA Copier follower: copies the master's positions with a lot multiplier."
 
 #include <Trade\Trade.mqh>

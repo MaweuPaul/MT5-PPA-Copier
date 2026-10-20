@@ -2,7 +2,7 @@
 
 **Prop & Personal Account copier for MetaTrader 5.** A local trade copier for MT5. Place a trade once on your main account and it is copied, at the size you choose, to every other account you trade: prop firm accounts, personal broker accounts, or a mix of both. Everything runs on your own PC or VPS.
 
-> **Status:** Works with MetaTrader 5 (MT5 only). Tested on demo accounts at FxPro, Pepperstone and Exness. See [plan.md](plan.md) for the design and roadmap.
+> **Version 2.0.0** · Works with MetaTrader 5 (MT5 only). See the [changelog](CHANGELOG.md). Tested on demo accounts at FxPro, Pepperstone and Exness. See [plan.md](plan.md) for the design and roadmap.
 
 ---
 
