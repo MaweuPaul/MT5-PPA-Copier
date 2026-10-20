@@ -37,24 +37,41 @@ func copyMT5(src, serversFrom, dst string) error {
 }
 
 // bestServerList picks the servers.dat most likely to know `server`: an
-// added account on that same server, else the biggest list among added
-// accounts (it has learned the most brokers), else the source install's.
+// added account on that same server, else the biggest list found on this PC
+// (it has learned the most brokers) - among added accounts, the source
+// install, and every normal MT5's data folder (%APPDATA%\MetaQuotes\Terminal).
 func bestServerList(accounts []Account, server, source string) string {
-	best, bestSize := filepath.Join(source, "Config", "servers.dat"), int64(0)
+	candidates := []string{filepath.Join(source, "Config", "servers.dat")}
 	for _, a := range accounts {
 		p := filepath.Join(a.Dir, "Config", "servers.dat")
-		info, err := os.Stat(p)
-		if err != nil {
-			continue
-		}
-		if a.Server == server {
+		if a.Server == server && exists(p) {
 			return p
 		}
-		if info.Size() > bestSize {
+		candidates = append(candidates, p)
+	}
+	dataDirs, _ := filepath.Glob(filepath.Join(os.Getenv("APPDATA"), "MetaQuotes", "Terminal", "*", "config", "servers.dat"))
+	candidates = append(candidates, dataDirs...)
+
+	best, bestSize := candidates[0], int64(-1)
+	for _, p := range candidates {
+		if info, err := os.Stat(p); err == nil && info.Size() > bestSize {
 			best, bestSize = p, info.Size()
 		}
 	}
 	return best
+}
+
+// loggedIn reports whether MT5 in dir has logged in to server today
+// (its journal says "authorized on <server>").
+func loggedIn(dir, server string) bool {
+	logs, _ := filepath.Glob(filepath.Join(dir, "logs", "2*.log"))
+	for _, l := range logs {
+		raw, err := os.ReadFile(l)
+		if err == nil && strings.Contains(decodeUTF16(raw), "authorized on "+server) {
+			return true
+		}
+	}
+	return false
 }
 
 func copyFile(src, dst string) error {

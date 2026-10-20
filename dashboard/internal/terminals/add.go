@@ -164,7 +164,7 @@ func (m *Manager) add(job *Job, r AddRequest, s Settings) error {
 		if err := m.launch(dir, startupIni(r.Login, r.Password, r.Server)); err != nil {
 			return err
 		}
-		if !waitFor(filepath.Join(dir, "MQL5", "Include", "Trade", "Trade.mqh"), firstRunWait) {
+		if !waitUntil(func() bool { return exists(filepath.Join(dir, "MQL5", "Include", "Trade", "Trade.mqh")) }, firstRunWait) {
 			return errors.New("MT5 didn't finish its first start - check it opened, then try again")
 		}
 		job.step("Compiling the copier EAs…")
@@ -184,8 +184,29 @@ func (m *Manager) add(job *Job, r AddRequest, s Settings) error {
 	if err := m.saveAccount(Account{Login: r.Login, Server: r.Server, Role: r.Role, Dir: dir}); err != nil {
 		return err
 	}
-	job.step("Done. The account appears on the Overview within a few seconds once MT5 has logged in.")
+
+	job.step("Waiting for MT5 to log in (up to a minute)…")
+	if !waitUntil(func() bool { return loggedIn(dir, r.Server) }, loginWait) {
+		// Usually MT5 doesn't know this broker's server yet. Searching for the
+		// broker once teaches it; later accounts there then copy that list.
+		return fmt.Errorf("MT5 started but couldn't log in to %s. In the new MT5 window: "+
+			"File → Open an Account → search your broker → Connect with an existing trade account → "+
+			"enter this login, password and server, tick Save password. The account is added and will "+
+			"copy once it's connected. (If the password or server was mistyped, Remove it and add it again.)", r.Server)
+	}
+	job.step("Logged in. Done - the account appears on the Overview within a few seconds.")
 	return nil
+}
+
+const loginWait = 60 * time.Second
+
+func waitUntil(ok func() bool, timeout time.Duration) bool {
+	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); time.Sleep(2 * time.Second) {
+		if ok() {
+			return true
+		}
+	}
+	return false
 }
 
 // launch starts MT5 with a one-time config holding the password, and deletes
@@ -213,13 +234,4 @@ func (m *Manager) RemoveLeftoverInis() {
 	for _, f := range files {
 		os.Remove(f)
 	}
-}
-
-func waitFor(path string, timeout time.Duration) bool {
-	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); time.Sleep(time.Second) {
-		if exists(path) {
-			return true
-		}
-	}
-	return false
 }
