@@ -235,7 +235,8 @@
       </fieldset>
       <fieldset>
         <legend>Which MT5?</legend>
-        <label class="check"><input type="radio" name="source" value="new" checked> <span><strong>Set up a new MT5</strong> for this account (enter its login)</span></label>
+        <label class="check"><input type="radio" name="source" value="blank" checked> <span><strong>Open a new MT5 and I'll log in there</strong> (easiest: MT5 finds your broker's server)</span></label>
+        <label class="check"><input type="radio" name="source" value="new"> <span><strong>Set up a new MT5</strong> with the login I type here</span></label>
         <label class="check"><input type="radio" name="source" value="existing"> <span><strong>An MT5 I already have</strong>, already logged in (e.g. your prop firm's own MT5)</span></label>
       </fieldset>
       <fieldset class="new-only">
@@ -247,6 +248,9 @@
         </div>
         <label>Server <small>exactly as MT5 shows it, e.g. Pepperstone-Demo</small><input type="text" name="server" required spellcheck="false"></label>
       </fieldset>
+      <p class="note blank-only">A fresh MT5 opens with the copier already installed. Log in there as usual:
+        <strong>File → Open an Account</strong> → search your broker → <strong>Connect with an existing trade account</strong> →
+        tick <strong>Save password</strong>. The dashboard spots the login and finishes the setup by itself.</p>
       <fieldset class="existing-only" hidden>
         <legend>Your MT5</legend>
         <p class="note">The account it's logged in to is detected for you. That MT5 closes for a moment while the copier is added on a new chart. Your own charts aren't changed.</p>

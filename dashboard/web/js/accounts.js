@@ -2,7 +2,7 @@
 // and the one-time setup (MT5 folder, accounts folder, start with Windows).
 import { $, esc, pill, rowsOrEmpty } from "./dom.js";
 import { readDelays } from "./delays.js";
-import { getAccounts, addAccount, attachAccount, getAddJob, accountAction, saveSetup, startAllAccounts } from "./api.js";
+import { getAccounts, addAccount, attachAccount, openBlankAccount, getAddJob, accountAction, saveSetup, startAllAccounts } from "./api.js";
 
 const JOB_POLL_MS = 1000;
 const dialog = $("#addAccount");
@@ -42,13 +42,14 @@ export async function refreshAccounts() {
 function syncForm() {
   const e = form.elements;
   const follower = e.role.value === "follower";
-  const existing = e.source.value === "existing";
+  const source = e.source.value;   // blank | new | existing
   form.querySelector(".follower-only").hidden = !follower;
-  form.querySelector(".new-only").hidden = existing;
-  form.querySelector(".existing-only").hidden = !existing;
+  form.querySelector(".blank-only").hidden = source !== "blank";
+  form.querySelector(".new-only").hidden = source !== "new";
+  form.querySelector(".existing-only").hidden = source !== "existing";
   e.master_id.required = follower;
-  for (const name of ["login", "password", "server"]) e[name].required = !existing;
-  e.folder.required = existing;
+  for (const name of ["login", "password", "server"]) e[name].required = source === "new";
+  e.folder.required = source === "existing";
 }
 
 function openAdd() {
@@ -70,7 +71,7 @@ function showSteps(steps, done) {
 
 async function submitAdd() {
   const e = form.elements;
-  const existing = e.source.value === "existing";
+  const source = e.source.value;
   const copying = {
     role: e.role.value, master_id: e.master_id.value.trim(), multiplier: Number(e.multiplier.value || 1),
     symbol_suffix: e.symbol_suffix.value.trim(), ...readDelays(form),
@@ -78,8 +79,9 @@ async function submitAdd() {
   $("#addError").hidden = true;
   $("#addSubmit").disabled = true;
   try {
-    const { job } = existing
-      ? await attachAccount({ ...copying, folder: e.folder.value.trim() })
+    const { job } =
+      source === "blank" ? await openBlankAccount(copying)
+      : source === "existing" ? await attachAccount({ ...copying, folder: e.folder.value.trim() })
       : await addAccount({ ...copying, login: e.login.value.trim(), password: e.password.value, server: e.server.value.trim() });
     e.password.value = "";   // don't keep it in the page
     for (;;) {

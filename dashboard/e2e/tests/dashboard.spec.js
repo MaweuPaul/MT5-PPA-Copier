@@ -12,7 +12,13 @@ test.beforeAll(async () => {
   api = await pwRequest.newContext({ baseURL: "http://127.0.0.1:8750" });
   restore = await snapshotState(api);
   followers = (await overview(api)).followers;
-  pepper = String(followers[0].login);
+  pepper = followers.length ? String(followers[0].login) : null;
+});
+
+// Tests that change a follower's settings need one to exist.
+const NEEDS_FOLLOWER = /^(settings|safety|pause|templates|activity)/;
+test.beforeEach(({}, info) => {
+  test.skip(!pepper && NEEDS_FOLLOWER.test(info.title), "needs at least one copy account");
 });
 
 test.afterAll(async () => {
@@ -161,6 +167,7 @@ test("accounts: add form shows the server's validation error and creates nothing
   await page.goto("/#accounts");
   await page.locator("#addAccountBtn").click();
   const f = page.locator("#addForm");
+  await f.locator("[name=source][value=new]").check();          // type-the-login option
   await f.locator("[name=login]").fill("123");
   await f.locator("[name=password]").fill("x");
   await f.locator("[name=server]").fill("Bad/Server");   // "/" is not allowed in a server name

@@ -47,3 +47,5 @@ export const saveSetup = (setup) => request("/api/setup", { method: "PUT", body:
 export const startAllAccounts = () => request("/api/accounts/start-all", { method: "POST" });
 
 export const attachAccount = (form) => request("/api/accounts/attach", { method: "POST", body: form });
+
+export const openBlankAccount = (form) => request("/api/accounts/open-blank", { method: "POST", body: form });

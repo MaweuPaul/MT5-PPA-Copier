@@ -31,6 +31,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/accounts/jobs/{id}", a.addJob)
 	mux.HandleFunc("POST /api/accounts/start-all", a.startAll)
 	mux.HandleFunc("POST /api/accounts/attach", a.attachAccount)
+	mux.HandleFunc("POST /api/accounts/open-blank", a.openBlank)
 	mux.HandleFunc("POST /api/accounts/{login}/start", a.accountAction("start"))
 	mux.HandleFunc("POST /api/accounts/{login}/stop", a.accountAction("stop"))
 	mux.HandleFunc("DELETE /api/accounts/{login}", a.accountAction("remove"))

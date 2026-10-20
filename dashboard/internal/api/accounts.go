@@ -22,72 +22,105 @@ func (a *API) addAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	// A follower's lot size, suffix and delays become its dashboard config,
 	// checked before anything is created and picked up when its EA starts.
-	cfg := store.DefaultConfig()
-	if req.Role == terminals.RoleFollower {
-		cfg.Multiplier, cfg.SymbolSuffix = req.Multiplier, req.Suffix
-		cfg.DelayMs, cfg.DelayJitterMs = req.DelayMs, req.DelayJitterMs
-		cfg.CloseDelayMs, cfg.CloseDelayJitterMs = req.CloseDelayMs, req.CloseDelayJitterMs
-		if err := cfg.Validate(); err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
+	cfg, _, ok := copyingForm{req.Role, req.MasterID, req.Multiplier, req.Suffix,
+		req.DelayMs, req.DelayJitterMs, req.CloseDelayMs, req.CloseDelayJitterMs}.followerConfig(w)
+	if !ok {
+		return
 	}
 	id, err := a.tm.Add(req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if req.Role == terminals.RoleFollower {
-		if err := a.st.SaveConfig(req.Login, cfg); err != nil {
-			writeError(w, http.StatusInternalServerError, "account is being added, but saving its settings failed: "+err.Error())
-			return
-		}
+	if err := a.saveFollower(req.Role, req.Login, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, "account is being added, but saving its settings failed: "+err.Error())
+		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"job": id})
+}
+
+// copyingForm is the "Copying" part of the add forms (followers only).
+type copyingForm struct {
+	Role               string  `json:"role"`
+	MasterID           string  `json:"master_id"`
+	Multiplier         float64 `json:"multiplier"`
+	Suffix             string  `json:"symbol_suffix"`
+	DelayMs            int     `json:"delay_ms"`
+	DelayJitterMs      int     `json:"delay_jitter_ms"`
+	CloseDelayMs       int     `json:"close_delay_ms"`
+	CloseDelayJitterMs int     `json:"close_delay_jitter_ms"`
+}
+
+// followerConfig validates the copying fields and returns the config to save
+// and the EA inputs for the chart. ok=false means a 400 was written.
+func (f copyingForm) followerConfig(w http.ResponseWriter) (cfg store.Config, inputs []string, ok bool) {
+	cfg = store.DefaultConfig()
+	if f.Role != terminals.RoleFollower {
+		return cfg, []string{}, true
+	}
+	if !store.ValidLogin(f.MasterID) {
+		writeError(w, http.StatusBadRequest, "enter the main account's login")
+		return cfg, nil, false
+	}
+	cfg.Multiplier, cfg.SymbolSuffix = f.Multiplier, f.Suffix
+	cfg.DelayMs, cfg.DelayJitterMs = f.DelayMs, f.DelayJitterMs
+	cfg.CloseDelayMs, cfg.CloseDelayJitterMs = f.CloseDelayMs, f.CloseDelayJitterMs
+	if err := cfg.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return cfg, nil, false
+	}
+	return cfg, []string{"MasterId=" + f.MasterID}, true
+}
+
+// saveFollower stores a new follower's settings once its login is known.
+func (a *API) saveFollower(role, login string, cfg store.Config) error {
+	if role != terminals.RoleFollower {
+		return nil
+	}
+	return a.st.SaveConfig(login, cfg)
 }
 
 // attachAccount adds the copier to an MT5 the user already has.
 func (a *API) attachAccount(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		terminals.AttachRequest
-		MasterID           string  `json:"master_id"`
-		Multiplier         float64 `json:"multiplier"`
-		Suffix             string  `json:"symbol_suffix"`
-		DelayMs            int     `json:"delay_ms"`
-		DelayJitterMs      int     `json:"delay_jitter_ms"`
-		CloseDelayMs       int     `json:"close_delay_ms"`
-		CloseDelayJitterMs int     `json:"close_delay_jitter_ms"`
+		copyingForm
+		Folder string `json:"folder"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	follower := req.Role == terminals.RoleFollower
-	cfg := store.DefaultConfig()
-	if follower {
-		if !store.ValidLogin(req.MasterID) {
-			writeError(w, http.StatusBadRequest, "enter the main account's login")
-			return
-		}
-		cfg.Multiplier, cfg.SymbolSuffix = req.Multiplier, req.Suffix
-		cfg.DelayMs, cfg.DelayJitterMs = req.DelayMs, req.DelayJitterMs
-		cfg.CloseDelayMs, cfg.CloseDelayJitterMs = req.CloseDelayMs, req.CloseDelayJitterMs
-		if err := cfg.Validate(); err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
+	cfg, inputs, ok := req.followerConfig(w)
+	if !ok {
+		return
 	}
-	id, found, err := a.tm.Attach(req.AttachRequest, func(string) []string { return []string{"MasterId=" + req.MasterID} })
+	id, found, err := a.tm.Attach(terminals.AttachRequest{Role: req.Role, Folder: req.Folder}, func(string) []string { return inputs })
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if follower {
-		if err := a.st.SaveConfig(found.Login, cfg); err != nil {
-			writeError(w, http.StatusInternalServerError, "saving its settings failed: "+err.Error())
-			return
-		}
+	if err := a.saveFollower(req.Role, found.Login, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, "saving its settings failed: "+err.Error())
+		return
 	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"job": id, "login": found.Login, "server": found.Server})
+}
+
+// openBlank opens a fresh MT5 for the user to log in to; setup finishes on login.
+func (a *API) openBlank(w http.ResponseWriter, r *http.Request) {
+	var req copyingForm
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	cfg, inputs, ok := req.followerConfig(w)
+	if !ok {
+		return
+	}
+	id, err := a.tm.OpenBlank(req.Role, inputs, func(login string) error { return a.saveFollower(req.Role, login, cfg) })
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"job": id})
 }
 
 func (a *API) addJob(w http.ResponseWriter, r *http.Request) {
