@@ -489,9 +489,18 @@ bool TryOpen(const int k, const int i, const ulong now)
       return true;
      }
 
-   // Rejections that retrying can't fix.
+   // The broker or firm blocks EA trading on this account (e.g. prop firms that
+   // ban expert advisors). Retrying can't change that - say so plainly.
+   if(rc == TRADE_RETCODE_SERVER_DISABLES_AT)
+     {
+      Alert("PPA Copier: ", AccountInfoString(ACCOUNT_SERVER),
+            " blocks automated (EA) trading on this account - the copier can't trade here. Check the firm's rules on EAs and copiers.");
+      return Skip(k, "the broker blocks automated (EA) trading on this account - check its rules on EAs and trade copiers");
+     }
+   // Other rejections that retrying can't fix.
    if(rc == TRADE_RETCODE_NO_MONEY || rc == TRADE_RETCODE_MARKET_CLOSED || rc == TRADE_RETCODE_TRADE_DISABLED ||
-      rc == TRADE_RETCODE_INVALID_VOLUME || rc == TRADE_RETCODE_LIMIT_VOLUME || rc == TRADE_RETCODE_LIMIT_POSITIONS)
+      rc == TRADE_RETCODE_CLIENT_DISABLES_AT || rc == TRADE_RETCODE_INVALID_VOLUME ||
+      rc == TRADE_RETCODE_LIMIT_VOLUME || rc == TRADE_RETCODE_LIMIT_POSITIONS)
       return Skip(k, StringFormat("broker rejected %s: %s", sym, g_trade.ResultRetcodeDescription()));
    return RetryOpen(k, now, mt, sym, rc, rc ? g_trade.ResultRetcodeDescription() : "order not sent");
   }

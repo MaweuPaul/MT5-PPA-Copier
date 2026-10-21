@@ -150,6 +150,8 @@ docs/                         setup guide and file formats
 
 PPA Copier is meant for copying between **accounts you own**. Managing trades on other people's accounts may require regulatory authorization where you live.
 
+**The copier runs as an MT5 Expert Advisor (EA).** Some prop firms ban EAs or third-party trade copiers outright, and their servers reject EA orders ("auto trading disabled by server"). Don't use the copier on those accounts, and don't try to get around the block. The copier skips such trades and alerts you, but only use it where the firm allows EAs and copying between your own accounts.
+
 Broker and prop firm rules differ and change over time. Before using any copier, check each firm's terms on:
 - copy trading and trade copiers,
 - copying between accounts owned by different people,
